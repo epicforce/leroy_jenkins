@@ -1,0 +1,44 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+  <f:section title="Environment Settings">
+    <f:block>
+        <f:entry title="LEROY_HOME" field="leroyhome" >
+          <f:textbox />
+        </f:entry>    
+    </f:block>
+     <f:entry title="asdasd" field="asdasdasd" >
+          <f:textbox value="${instance.getParameter()}"/>
+        </f:entry>    
+  </f:section>
+  <f:section title="Build Settings">
+    <f:block>
+        <f:entry title="Workflow" field="workflow">
+            <select name="workflow">
+                <f:option value="initialize" selected="${instance.workflow=='initialize'}">Initialize</f:option>
+                <f:option value="deploy" selected="${instance.workflow=='deploy'}" >Deploy</f:option>
+                <f:option value="test" selected="${instance.workflow=='test'}">Test</f:option>
+                <f:option value="restart-services" selected="${instance.workflow=='restart-services'}">Restart Services</f:option>
+            </select>
+        </f:entry>    
+        <f:entry title="Environment" field="envrn">
+            <select name="envrn">
+                <f:option value="dev" selected="${instance.envrn=='dev'}">Dev</f:option>
+                <f:option value="test" selected="${instance.envrn=='test'}">Test</f:option>
+                <f:option value="stag" selected="${instance.envrn=='stag'}">Staging</f:option>
+                <f:option value="prod" selected="${instance.envrn=='prod'}">Production</f:option>
+            </select>
+        </f:entry>
+       
+        <f:entry title="Environt" field="parameters1">
+            <select name="parameters1">
+              
+                <j:forEach var="v" items="${instance.parameters}">
+                  <f:option value="${v}" selected="${instance.envrn=='${v}'}">${v}</f:option>
+                
+                </j:forEach>
+       
+            </select>
+        </f:entry>
+
+        </f:block>  
+  </f:section>
+</j:jelly>  

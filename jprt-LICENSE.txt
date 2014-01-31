@@ -1,0 +1,4 @@
+CAUTION!!
+
+These JPRT jars are not released to public under any redistributable license.
+Please do not copy or redistribute these jars.

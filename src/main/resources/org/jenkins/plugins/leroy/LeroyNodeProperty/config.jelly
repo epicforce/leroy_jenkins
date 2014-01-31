@@ -1,0 +1,23 @@
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js">-->
+<!--</script>-->
+    <script src="${rootURL}/plugin/leroy/myCustom.js"/>
+  <!--<st:include page="js.jelly" />-->
+
+     <!--<script src="//code.jquery.com/jquery-1.10.2.js"></script>-->
+
+  <f:section title="Environment Settings">
+    <f:block>
+        <f:entry title="LEROY_HOME" field="leroyhome" >
+          <f:textbox />
+        </f:entry>
+        <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
+          <f:textbox value="1337" />
+        </f:entry>  
+        <f:entry field="goalType" title="Choose Goal Type">
+            <f:select />
+        </f:entry>   
+    </f:block>    
+  </f:section>
+  
+</j:jelly>  

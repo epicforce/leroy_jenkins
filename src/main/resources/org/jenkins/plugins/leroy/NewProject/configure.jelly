@@ -1,0 +1,49 @@
+<?jelly escape-by-default='true'?>
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
+  
+    <l:layout title="${it.displayName} Config" norefresh="true" >
+      
+    <st:include page="sidepanel.jelly" />
+    <f:breadcrumb-config-outline />
+    <l:main-panel>
+         <st:include page="css1.jelly" />
+   
+      <div class="behavior-loading">${%LOADING}</div>
+      <f:form method="post" action="configSubmit" name="config">
+        <j:set var="descriptor" value="${it.descriptor}" />
+        <j:set var="instance" value="${it}" />
+
+        <j:if test="${it.isNameEditable()}">
+          <f:entry title="${%name(it.pronoun)}">
+            <f:textbox name="name" value="${it.name}" />
+          </f:entry>
+        </j:if>
+        <f:entry title="${%Description}" help="${app.markupFormatter.helpUrl}">
+          <f:textarea name="description" value="${it.description}" codemirror-mode="${app.markupFormatter.codeMirrorMode}" codemirror-config="${app.markupFormatter.codeMirrorConfig}" previewEndpoint="/markupFormatter/previewDescription"/>
+        </f:entry>
+
+        <j:if test="${it.supportsLogRotator()}">
+          <!-- log rotator -->
+          <f:optionalBlock name="logrotate"
+            help="/help/project-config/log-rotation.html"
+            title="${%Discard Old Builds}" checked="${it.buildDiscarder!=null}" inline="true">
+            <f:dropdownDescriptorSelector field="buildDiscarder" title="${%Strategy}"/>
+          </f:optionalBlock>
+        </j:if>
+        <!-- job property configurations. This should have been <f:descriptorList> -->
+        <f:descriptorList field="properties" descriptors="${h.getJobPropertyDescriptors(it.getClass())}" forceRowSet="true" />
+    
+         <!--      additional entries from derived classes     -->
+        <st:include page="config.jelly" />
+        
+        <j:if test="${h.hasPermission(it,it.CONFIGURE)}">
+          <f:bottomButtonBar>
+            <!--<input type="button" name="StructureTest" value="Test" onclick="buildFormTree(this.form)" />-->
+            <f:submit value="${%Save}" />
+            <f:apply />
+          </f:bottomButtonBar>
+        </j:if>
+      </f:form>
+    </l:main-panel>
+  </l:layout>
+</j:jelly>
