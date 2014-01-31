@@ -48,15 +48,11 @@ import javax.servlet.ServletException;
 import org.kohsuke.stapler.QueryParameter;
 
 /**
- * {@link NodeProperty} that sets additional environment variables.
+ * {@link NodeProperty} that sets additional node properties.
  *
  * @since 1.286
  */
 public class LeroyNodeProperty extends NodeProperty<Node> {
-
-    /**
-     * Slave-specific environment variables
-     */
     
     private String leroyhome;
     
