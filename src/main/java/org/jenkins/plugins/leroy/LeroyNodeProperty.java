@@ -39,7 +39,6 @@ import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -104,7 +103,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         @Override
 	public String getDisplayName() {
 			return "Leroy Host";
-		}
+	}
 
         public ListBoxModel doFillGoalTypeItems() {
             ListBoxModel items = new ListBoxModel();
