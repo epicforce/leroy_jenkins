@@ -25,7 +25,7 @@ jQuery(document).ready(function(){
                     possibleIndex = i;
                 }
 
-        // if no value is explicitly selected by the server, try to select the same value
+                // if no value is explicitly selected by the server, try to select the same value
                 if (!selectionSet && possibleIndex!=null)
                     l.selectedIndex = possibleIndex;
             }

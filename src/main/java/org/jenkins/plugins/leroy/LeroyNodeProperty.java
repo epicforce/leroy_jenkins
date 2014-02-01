@@ -45,6 +45,13 @@ import java.util.Arrays;
 import java.util.List;
 import javax.servlet.ServletException;
 import org.kohsuke.stapler.QueryParameter;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.DocumentBuilder;
+import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
+import org.w3c.dom.Element;
+import java.io.File;
+import org.jenkins.plugins.leroy.util.XMLParser;
 
 /**
  * {@link NodeProperty} that sets additional node properties.
@@ -63,12 +70,14 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     public LeroyNodeProperty(String leroyhome, String leroycontrollerport) {
         this.leroyhome = leroyhome; 
         this.leroycontrollerport = leroycontrollerport;
+        agents.add("test");
+        agents.add("test2");
     }
 	
     public String getLeroyhome() {
         return leroyhome;
     }
-    
+   
     public String getLeroycontrollerport() {
         return leroycontrollerport;
     }
@@ -76,6 +85,13 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     public List<String> getList(){
         return agents;
     }
+    
+    public List<String> getAgentList(){
+        String filepath = getLeroyhome() + "\\agents.xml";
+        return XMLParser.getAgents(new File(filepath));
+    }
+    
+    
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher,
 			BuildListener listener) throws IOException, InterruptedException {
@@ -111,7 +127,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             for (String agent : agents) {
                 items.add(agent,agent);
             }
-            return items;
+             return items;
         }
         
          public FormValidation doCheckLeroyhome(@QueryParameter String value)
@@ -120,7 +136,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 return FormValidation.error("Please provide a path for leroy plugin");
             else
             {
-                agents.add("test");
+                String filepath = value + "\\agents.xml";
+                agents =  XMLParser.getAgents(new File(filepath));
                 doFillGoalTypeItems();
             }
             return FormValidation.ok();
