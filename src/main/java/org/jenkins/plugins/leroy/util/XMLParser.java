@@ -33,30 +33,13 @@ public class XMLParser {
 	//read this - http://stackoverflow.com/questions/13786607/normalization-in-dom-parsing-with-java-how-does-it-work
 	doc.getDocumentElement().normalize();
  
-	System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
- 
 	NodeList nList = doc.getElementsByTagName("agent");
- 
-	System.out.println("----------------------------");
- 
+  
 	for (int temp = 0; temp < nList.getLength(); temp++) {
  
 		Node nNode = nList.item(temp);
                 Element eElement = (Element) nNode;
-		System.out.println("\nCurrent Element :" + eElement.getAttribute("name"));
                 agents.add(eElement.getAttribute("name"));
-//                //nNode.item(0);
-//		if (nNode.getNodeType() == Node.ELEMENT_NODE) {
-// 
-//			Element eElement = (Element) nNode;
-// 
-//			System.out.println("Staff id : " + eElement.getAttribute("id"));
-//			System.out.println("First Name : " + eElement.getElementsByTagName("firstname").item(0).getTextContent());
-//			System.out.println("Last Name : " + eElement.getElementsByTagName("lastname").item(0).getTextContent());
-//			System.out.println("Nick Name : " + eElement.getElementsByTagName("nickname").item(0).getTextContent());
-//			System.out.println("Salary : " + eElement.getElementsByTagName("salary").item(0).getTextContent());
-// 
-//		}
 	}
         return agents;
     } catch (Exception e) {
@@ -64,5 +47,36 @@ public class XMLParser {
     }
     return null;
   }
+  
+   public static List<String> getEnvironment(File fXmlFile) {
+ 
+    try {
+        List<String> agents = new ArrayList<String>();
+	//File fXmlFile = new File("/Users/mkyong/staff.xml");
+	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	Document doc = dBuilder.parse(fXmlFile);
+ 
+	//optional, but recommended
+	//read this - http://stackoverflow.com/questions/13786607/normalization-in-dom-parsing-with-java-how-does-it-work
+	doc.getDocumentElement().normalize();
+ 
+//	System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
+ 
+	NodeList nList = doc.getElementsByTagName("environment");
+ 
+	for (int temp = 0; temp < nList.getLength(); temp++) {
+ 
+		Node nNode = nList.item(temp);
+                Element eElement = (Element) nNode;
+                agents.add(eElement.getAttribute("name"));
+	}
+        return agents;
+    } catch (Exception e) {
+	e.printStackTrace();
+    }
+    return null;
+  }
+ 
  
 }

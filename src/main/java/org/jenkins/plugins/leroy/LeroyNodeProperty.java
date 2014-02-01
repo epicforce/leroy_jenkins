@@ -66,12 +66,13 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     
     public static List<String> agents = new ArrayList<String>();
     
+    public static List<String> environments = new ArrayList<String>();
+    
     @DataBoundConstructor
     public LeroyNodeProperty(String leroyhome, String leroycontrollerport) {
         this.leroyhome = leroyhome; 
         this.leroycontrollerport = leroycontrollerport;
-        agents.add("test");
-        agents.add("test2");
+        
     }
 	
     public String getLeroyhome() {
@@ -89,6 +90,28 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     public List<String> getAgentList(){
         String filepath = getLeroyhome() + "\\agents.xml";
         return XMLParser.getAgents(new File(filepath));
+    }
+    
+    public List<String> getEnvironmentList(){
+        String filepath = getLeroyhome() + "\\environment\\";
+        
+        //get file names
+        List<String> results = new ArrayList<String>();
+        File[] files = new File(filepath).listFiles();
+
+        for (File file : files) {
+            if (file.isFile()) {
+                results.add(file.getName());
+            }
+        }
+        
+        List<String> envs = new ArrayList<String>();
+        for(String fname : results)
+        {
+            envs.addAll(XMLParser.getAgents(new File(filepath+fname)));
+        } 
+        
+        return envs;
     }
     
     
@@ -130,6 +153,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
              return items;
         }
         
+        public ListBoxModel doFillEnvironmentItems() {
+            ListBoxModel items = new ListBoxModel();
+         //   Iterator<String> ite = agents.iterator();
+            for (String env : environments) {
+                items.add(env,env);
+            }
+             return items;
+        }
+        
+        
          public FormValidation doCheckLeroyhome(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
@@ -138,6 +171,28 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             {
                 String filepath = value + "\\agents.xml";
                 agents =  XMLParser.getAgents(new File(filepath));
+                
+                String filepath1 = value + "\\environments\\";
+        
+                //get file names
+                List<String> results = new ArrayList<String>();
+                File[] files = new File(filepath1).listFiles();
+
+                for (File file : files) {
+                    if (file.isFile()) {
+                        results.add(file.getName());
+                    }
+                }
+
+                List<String> envs = new ArrayList<String>();
+                for(String fname : results)
+                {
+                    envs.addAll(XMLParser.getAgents(new File(filepath1+fname)));
+                } 
+
+                environments = envs;
+                
+                doFillEnvironmentItems();
                 doFillGoalTypeItems();
             }
             return FormValidation.ok();

@@ -3,11 +3,11 @@
  */
 jQuery(document).ready(function(){
   jQuery('input[name="_.leroyhome"]').focusout(function(){
-       new Ajax.Request(jQuery("select[name='_.goalType']").attr("fillurl"), {
+       new Ajax.Request(jQuery("select[name='_.environment']").attr("fillurl"), {
             timeout: 10000,
             onSuccess: function(rsp) {
                 console.log(rsp);
-                var l = jQuery('select[name="_.goalType"]');
+                var l = jQuery('select[name="_.environment"]');
                 var currentSelection = l.value;
              
                 l.empty();

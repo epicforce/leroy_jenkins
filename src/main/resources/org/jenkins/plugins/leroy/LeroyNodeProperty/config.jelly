@@ -14,21 +14,25 @@
         <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
           <f:textbox value="${it.test()}" />
         </f:entry>   
-<!--        <f:entry field="goalType" title="Choose Goal Type">
+<!--    <f:entry field="goalType" title="Choose Goal Type">
             <f:select />
         </f:entry>
         -->
         <f:table class="pane">
             <f:tbody>
-              <!--<f:tr><f:td class="pane-header" colspan="5">${it.typeLine(t.key)}</td></tr>-->
+              <tr>
+                  <td class="pane-header1">Agent</td>
+                  <td class="pane-header1">Environments</td>
+              </tr>
               <j:forEach var="v" items="${instance.getAgentList()}">
                 <tr>
                   <td class="pane">
                     ${v}
                   </td>
-<!--                  <f:td class="pane">${v.source}</f:td> 
-                  <f:td class="pane">${it.severityColumn(v)}</f:td>
-                  <f:td class="pane" width="99%">${v.message}</f:td>-->
+                  <td class="pane">
+                        <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                        <select fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "><option value="test">test</option></select>
+                  </td>
                 </tr>
               </j:forEach>
             </f:tbody>
