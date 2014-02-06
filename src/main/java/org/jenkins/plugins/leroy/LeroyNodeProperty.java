@@ -30,9 +30,9 @@ import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
 import hudson.model.ComputerSet;
 import hudson.model.Environment;
+import hudson.model.Hudson;
 import hudson.model.Node;
 import hudson.model.TaskListener;
-import hudson.slaves.Messages;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
@@ -41,16 +41,11 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import javax.servlet.ServletException;
 import org.kohsuke.stapler.QueryParameter;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
-import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Element;
 import java.io.File;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
 
 /**
@@ -63,16 +58,46 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     private String leroyhome;
     
     private String leroycontrollerport;
-    
+   
     public static List<String> agents = new ArrayList<String>();
     
     public static List<String> environments = new ArrayList<String>();
+    
+    public static List<String> roles = new ArrayList<String>();
     
     @DataBoundConstructor
     public LeroyNodeProperty(String leroyhome, String leroycontrollerport) {
         this.leroyhome = leroyhome; 
         this.leroycontrollerport = leroycontrollerport;
         
+        
+        String filepath = leroyhome + "\\agents.xml";
+                agents =  XMLParser.getAgents(new File(filepath));
+                
+                String filepath1 = leroyhome + "\\environments\\";
+        
+                //get file names
+                List<String> results = new ArrayList<String>();
+                File[] files = new File(filepath1).listFiles();
+
+                for (File file : files) {
+                    if (file.isFile()) {
+                        results.add(file.getName());
+                    }
+                }
+
+                List<String> envs = new ArrayList<String>();
+                List<String> envsroles = new ArrayList<String>();
+                
+                for(String fname : results)
+                {
+                    XMLParser.getEnvironment(new File(filepath1+fname));
+                    envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
+                    envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
+                } 
+
+                environments = envs;
+                roles = envsroles;
     }
 	
     public String getLeroyhome() {
@@ -130,7 +155,6 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         env.put("IS_LEROY_NODE", "TRUE");
         env.put("LEROY_HOME", getLeroyhome());
         env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
-        //env.putAll(envVars);
     }
 
     /**
@@ -146,29 +170,61 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
         public ListBoxModel doFillGoalTypeItems() {
             ListBoxModel items = new ListBoxModel();
-         //   Iterator<String> ite = agents.iterator();
             for (String agent : agents) {
                 items.add(agent,agent);
             }
              return items;
         }
         
-        public ListBoxModel doFillEnvironmentItems() {
+        public ListBoxModel doFillRolesItems() {
             ListBoxModel items = new ListBoxModel();
-         //   Iterator<String> ite = agents.iterator();
-            for (String env : environments) {
-                items.add(env,env);
+            for (String role : roles) {
+                items.add(role,role);
             }
              return items;
         }
         
+        public ListBoxModel doFillEnvironmentItems() {
+            ListBoxModel items = new ListBoxModel();
+            for (String env : environments) {
+                items.add(env,env);
+            }
+            return items;
+        }
+        
+        public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyhome, 
+                @QueryParameter("agentname") final String agentname ) 
+                throws IOException, ServletException {
+            try {
+                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                //FilePath projectRoot = build.getWorkspace();
+                int returnCode = 0;
+                
+                if(launcher.isUnix())
+                    returnCode = launcher.launch().cmds(leroyhome+"/controller","--addagent", agentname).stdout(output).join();
+                else
+                    returnCode = launcher.launch().cmds(leroyhome+"/controller.exe","--addagent", agentname).stdout(output).join();
+                
+                
+                if(returnCode==0)
+                {
+                    return FormValidation.ok("Success");
+                }
+                
+                return FormValidation.error("Failed to add agent");
+                
+            } catch (Exception e) {
+                return FormValidation.error("Client error : "+e.getMessage());
+            }
+            
+        }
         
          public FormValidation doCheckLeroyhome(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
                 return FormValidation.error("Please provide a path for leroy plugin");
-            else
-            {
+            else {
                 String filepath = value + "\\agents.xml";
                 agents =  XMLParser.getAgents(new File(filepath));
                 
@@ -185,15 +241,21 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 }
 
                 List<String> envs = new ArrayList<String>();
+                List<String> envsroles = new ArrayList<String>();
+                
                 for(String fname : results)
                 {
-                    envs.addAll(XMLParser.getAgents(new File(filepath1+fname)));
+                    XMLParser.getEnvironment(new File(filepath1+fname));
+                    envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
+                    envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
                 } 
 
                 environments = envs;
-                
-                doFillEnvironmentItems();
-                doFillGoalTypeItems();
+                roles = envsroles;
+
+//                doFillRolesItems();
+//                doFillEnvironmentItems();
+//                doFillGoalTypeItems();
             }
             return FormValidation.ok();
         }
@@ -211,23 +273,5 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             }
         }
     }
-	
-//	public static class Entry {
-//		public String key, value;
-//
-//		@DataBoundConstructor
-//		public Entry(String key, String value) {
-//			this.key = key;
-//			this.value = value;
-//		}
-//	}
-//	
-//	private static EnvVars toMap(List<Entry> entries) {
-//		EnvVars map = new EnvVars();
-//        if (entries!=null)
-//            for (Entry entry: entries)
-//                map.put(entry.key,entry.value);
-//		return map;
-//	}
 
 }

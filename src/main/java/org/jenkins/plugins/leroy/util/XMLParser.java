@@ -1,7 +1,3 @@
-/*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
- */
 package org.jenkins.plugins.leroy.util;
 
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -29,8 +25,6 @@ public class XMLParser {
 	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 	Document doc = dBuilder.parse(fXmlFile);
  
-	//optional, but recommended
-	//read this - http://stackoverflow.com/questions/13786607/normalization-in-dom-parsing-with-java-how-does-it-work
 	doc.getDocumentElement().normalize();
  
 	NodeList nList = doc.getElementsByTagName("agent");
@@ -40,6 +34,33 @@ public class XMLParser {
 		Node nNode = nList.item(temp);
                 Element eElement = (Element) nNode;
                 agents.add(eElement.getAttribute("name"));
+	}
+        return agents;
+    } catch (Exception e) {
+	e.printStackTrace();
+    }
+    return null;
+  }
+   public static List<String> getRoles(File fXmlFile) {
+ 
+    try {
+        List<String> agents = new ArrayList<String>();
+	//File fXmlFile = new File("/Users/mkyong/staff.xml");
+	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	Document doc = dBuilder.parse(fXmlFile);
+ 
+	doc.getDocumentElement().normalize();
+ 
+
+	NodeList nList = doc.getElementsByTagName("agent");
+ 
+	for (int temp = 0; temp < nList.getLength(); temp++) {
+ 
+		Node nNode = nList.item(temp);
+                Element eElement = (Element) nNode;
+                //NodeList nList = eElement.getElementsByTagName("environments");
+                agents.add(eElement.getAttribute("roles"));
 	}
         return agents;
     } catch (Exception e) {
@@ -57,11 +78,7 @@ public class XMLParser {
 	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 	Document doc = dBuilder.parse(fXmlFile);
  
-	//optional, but recommended
-	//read this - http://stackoverflow.com/questions/13786607/normalization-in-dom-parsing-with-java-how-does-it-work
 	doc.getDocumentElement().normalize();
- 
-//	System.out.println("Root element :" + doc.getDocumentElement().getNodeName());
  
 	NodeList nList = doc.getElementsByTagName("environment");
  

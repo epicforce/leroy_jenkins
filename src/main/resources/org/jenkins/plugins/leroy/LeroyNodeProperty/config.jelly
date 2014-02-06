@@ -1,43 +1,70 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-<!--<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js">-->
-<!--</script>-->
-    <script src="${rootURL}/plugin/leroy/myCustom.js"/>
-  <!--<st:include page="js.jelly" />-->
 
-     <!--<script src="//code.jquery.com/jquery-1.10.2.js"></script>-->
-
+  <script src="${rootURL}/plugin/leroy/myCustom.js"/>
+    
   <f:section title="Environment Settings">
     <f:block>
         <f:entry title="LEROY_HOME" field="leroyhome" >
           <f:textbox />
         </f:entry>
         <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
-          <f:textbox value="${it.test()}" />
+          <f:textbox value="1337" />
         </f:entry>   
-<!--    <f:entry field="goalType" title="Choose Goal Type">
-            <f:select />
-        </f:entry>
-        -->
+        
         <f:table class="pane">
             <f:tbody>
-              <tr>
-                  <td class="pane-header1">Agent</td>
-                  <td class="pane-header1">Environments</td>
-              </tr>
-              <j:forEach var="v" items="${instance.getAgentList()}">
-                <tr>
-                  <td class="pane">
-                    ${v}
-                  </td>
-                  <td class="pane">
-                        <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
-                        <select fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "><option value="test">test</option></select>
-                  </td>
-                </tr>
-              </j:forEach>
+                <div>        
+                    <tr style="margin-left:50px;height:20px;">
+                        <td class="setting-leftspace"></td>
+                        <td class="setting-leftspace"></td>
+
+                        <td class="pane-header1" >
+                           <table>
+                               <td class="pane-header1" style="width:100px;">Agent</td>
+                               <td style="width:100px;">Environments</td>
+                              <td style="width:100px;">Roles</td>
+                              <td style="width:100px;"></td>
+                           </table>
+                        </td>
+                    </tr>
+                    <j:forEach var="v" items="${instance.getAgentList()}">
+                      <tr style="margin-left:50px;height:20px;">
+                        <td class="setting-leftspace"></td>
+                        <td class="setting-leftspace"></td>
+
+                        <td class="pane1" >
+                           <table>
+                              <td class="pane1" style="width:100px;">
+                                  <label>${v}</label>
+                              </td>
+                              <td class="pane1">
+                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    <select style="width:100px;"  fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "></select>
+                              </td>
+                              <td class="pane1">
+                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    <select style="width:100px;" fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillRolesItems" name="_.roles" value="" class="setting-input  select "></select>
+                              </td>
+                            </table>
+                         </td>
+                      </tr>
+                    </j:forEach>
+              
+              </div>
             </f:tbody>
-        </f:table>      
+        </f:table>
+        <f:section title="Add Agent">
+            <f:advanced>
+               
+                <f:entry title="Agent Name" field="agentname" >
+                    <f:textbox />
+                </f:entry>
+               <f:validateButton
+                   title="${%Add Agent}" progress="${%Adding...}"
+                   method="addAgent" with="agentname,leroyhome" />  
+            </f:advanced>
+        </f:section>    
+         
     </f:block>    
   </f:section>
-  
 </j:jelly>  
