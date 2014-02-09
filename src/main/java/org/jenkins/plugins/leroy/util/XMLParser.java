@@ -95,5 +95,32 @@ public class XMLParser {
     return null;
   }
  
+   public static List<String> addRoles(File fXmlFile, String agentname, String enviromentname, String rolename) {
+ 
+    try {
+        List<String> agents = new ArrayList<String>();
+	//File fXmlFile = new File("/Users/mkyong/staff.xml");
+	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+	Document doc = dBuilder.parse(fXmlFile);
+ 
+	doc.getDocumentElement().normalize();
+ 
+
+	NodeList nList = doc.getElementsByTagName("environment");
+ 
+	for (int temp = 0; temp < nList.getLength(); temp++) {
+ 
+		Node nNode = nList.item(temp);
+                Element eElement = (Element) nNode;
+                //NodeList nList = eElement.getElementsByTagName("environments");
+                agents.add(eElement.getAttribute("roles"));
+	}
+        return agents;
+    } catch (Exception e) {
+	e.printStackTrace();
+    }
+    return null;
+  }
  
 }

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<agents>
+	<agent name="test5">
+		<properties>
+			<property name="agentName">test5</property>
+		</properties>
+	</agent>
+</agents>

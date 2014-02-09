@@ -60,8 +60,53 @@ jQuery(document).ready(function(){
                     l.selectedIndex = possibleIndex;
             }
         });
-    
-    
+   
+        
+   //make the text box visible or invisible     
+   jQuery('select[name="_.roles"]').change(function(){
+//       console.log("assad"+jQuery(this).val());
+       if(jQuery(this).val() == '<NEW ROLE>')
+       {
+            var agentname = jQuery(this).attr('agentname');
+            console.log(jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').attr('agentname'));
+            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('display', 'inline');
+            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('visibility', 'visible');
+             
+       }
+       else{
+            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('display', 'none');
+            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('visibility', 'hidden');
+       }
+   });
+   jQuery('button[name="_.addrole"]').click(function(){
+       var agentname = jQuery(this).attr('agentname');
+       console.log(jQuery('select[name="_.roles"][agentname="'+agentname+'"]').val());
+       if(jQuery('select[name="_.roles"][agentname="'+agentname+'"]').val() == '<NEW ROLE>')
+       {
+            if(jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').val()!='')
+            {
+                var data = {
+                            agentname:agentname ,
+                            environmentname: jQuery('select[name="_.environment"][agentname="'+agentname+'"]').val( ),
+                            rolename: jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').val( )
+                            };
+                            console.log(data);
+                new Ajax.Request(jQuery("button[name='_.addrole']").attr("addurl"), {
+                timeout: 10000,
+                parameters: data,
+                onComplete: function(rsp) {
+                    
+                    jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('display', 'inline');
+                    jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('visibility', 'visible');
+                    }
+                });
+            }
+       }
+       else{
+//            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('display', 'none');
+//            jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').css('visibility', 'hidden');
+       }
+   });
   // focusout function  
   jQuery('input[name="_.leroyhome"]').focusout(function(){
        new Ajax.Request(jQuery("select[name='_.environment']").attr("fillurl"), {
@@ -82,8 +127,8 @@ jQuery(document).ready(function(){
                         l.selectedIndex = i;
                         selectionSet = true;
                     }
-                if (opts[i].value==currentSelection)
-                    possibleIndex = i;
+                    if (opts[i].value==currentSelection)
+                        possibleIndex = i;
                 }
 
                 // if no value is explicitly selected by the server, try to select the same value

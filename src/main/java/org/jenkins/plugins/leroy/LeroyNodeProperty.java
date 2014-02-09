@@ -25,6 +25,7 @@ package org.jenkins.plugins.leroy;
 
 import hudson.EnvVars;
 import hudson.Extension;
+import hudson.Functions;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
@@ -37,6 +38,7 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import java.io.BufferedWriter;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 import java.io.IOException;
@@ -45,6 +47,9 @@ import java.util.List;
 import javax.servlet.ServletException;
 import org.kohsuke.stapler.QueryParameter;
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
 
@@ -71,15 +76,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         this.leroycontrollerport = leroycontrollerport;
         
         
-        String filepath = leroyhome + "\\agents.xml";
+        String filepath = leroyhome + "/agents.xml";
                 agents =  XMLParser.getAgents(new File(filepath));
                 
-                String filepath1 = leroyhome + "\\environments\\";
-        
+                String filepath1 = leroyhome + "/environments/";
+                
                 //get file names
                 List<String> results = new ArrayList<String>();
                 File[] files = new File(filepath1).listFiles();
-
+                if(files.length > 0)
+                {
                 for (File file : files) {
                     if (file.isFile()) {
                         results.add(file.getName());
@@ -95,9 +101,10 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                     envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
                     envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
                 } 
-
+                envsroles.add("<NEW ROLE>");
                 environments = envs;
                 roles = envsroles;
+                }
     }
 	
     public String getLeroyhome() {
@@ -113,12 +120,12 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     }
     
     public List<String> getAgentList(){
-        String filepath = getLeroyhome() + "\\agents.xml";
+        String filepath = getLeroyhome() + "/agents.xml";
         return XMLParser.getAgents(new File(filepath));
     }
     
     public List<String> getEnvironmentList(){
-        String filepath = getLeroyhome() + "\\environment\\";
+        String filepath = getLeroyhome() + "/environments/";
         
         //get file names
         List<String> results = new ArrayList<String>();
@@ -155,7 +162,13 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         env.put("IS_LEROY_NODE", "TRUE");
         env.put("LEROY_HOME", getLeroyhome());
         env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
+                
     }
+    
+    public String getNodeName(){
+        return this.node.getNodeName();
+    }
+        
 
     /**
      *
@@ -193,47 +206,141 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         }
         
         public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyhome, 
-                @QueryParameter("agentname") final String agentname ) 
+                @QueryParameter("agentname") final String agentname, 
+                @QueryParameter("nodename") final String nodename ) 
                 throws IOException, ServletException {
+                 ByteArrayOutputStream output = new ByteArrayOutputStream();
+               
             try {
                 Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
                 //FilePath projectRoot = build.getWorkspace();
+                //create a new file
+                Writer writer = null;
+
+                try {
+                    writer = new BufferedWriter(new OutputStreamWriter(
+                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
+                    if(launcher.isUnix())
+                        writer.write("1\n"+agentname+"\n");
+                       
+                    else
+                        writer.write("3\r\n"+agentname+"\r\n");
+                } catch (IOException ex) {
+                  return FormValidation.error("error creating file: "+ex.getMessage());
+                } finally {
+                   try {writer.close();} catch (Exception ex) {}
+                }
+              
                 int returnCode = 0;
+//                String temp = leroyhome+"/agentdata.txt";
+//                String[] cmd =  {"TYPE" , leroyhome+"\\agentdata.txt", " | ", leroyhome+"/controller","--addagent", agentname};
+                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
+                launcher.decorateByEnv(envs);
                 
+//                Map<String,String> envs = Functions.getEnvVars();
                 if(launcher.isUnix())
-                    returnCode = launcher.launch().cmds(leroyhome+"/controller","--addagent", agentname).stdout(output).join();
-                else
-                    returnCode = launcher.launch().cmds(leroyhome+"/controller.exe","--addagent", agentname).stdout(output).join();
+                {
+//                    returnCode = launcher.launch().cmds("cd " +leroyhome).stdout(output).pwd(leroyhome).join();
+
                 
+                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.sh", leroyhome, agentname).pwd(leroyhome).stdout(output).join();
+//               }             "cat", leroyhome+"/agentdata.txt", "|", leroyhome+"/controller","--addagent", agentname
+                }
+                else
+                    returnCode = launcher.launch().envs(Functions.getEnvVars()).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.bat" , leroyhome, leroyhome+"/controller.exe" ).join();
+//                            launcher.launch(
+//                          cmd,
+//                       Functions.getEnvVars(),
+//                         output,
+//                         null).join();
+//                         
+                
+                int returnCode1 = 0;
+//                
+//                if(launcher.isUnix())
+//                    returnCode1 = launcher.launch().cmds("rm", leroyhome+"/agentdata.txt").stdout(output).join();
+//                else
+//                    returnCode1 = launcher.launch().cmds("del", leroyhome+"\\agentdata.txt").stdout(output).join();
                 
                 if(returnCode==0)
                 {
                     return FormValidation.ok("Success");
                 }
                 
-                return FormValidation.error("Failed to add agent");
+                return FormValidation.error("Failed to add agent" + output);
                 
             } catch (Exception e) {
                 return FormValidation.error("Client error : "+e.getMessage());
             }
             
         }
+        public FormValidation doAddRole(@QueryParameter("agentname") String agentname, 
+                @QueryParameter("environmentname") final String environment, 
+                @QueryParameter("rolename") final String rolename,
+                @QueryParameter("leroyhome") final String leroyhome)
+                throws IOException, ServletException {
+                
+            String filepath = leroyhome + "/agents.xml";
+            agents =  XMLParser.getAgents(new File(filepath));
+
+            String filepath1 = leroyhome + "/environments/";
+
+
+            //get file names
+            List<String> results = new ArrayList<String>();
+            File[] files = new File(filepath1).listFiles();
+
+            if(files.length > 0)
+            {
+                for (File file : files) {
+                    if (file.isFile()) {
+                        results.add(file.getName());
+                    }
+                }
+
+                List<String> envs = new ArrayList<String>();
+                List<String> envsroles = new ArrayList<String>();
+
+                for(String fname : results)
+                {
+                    XMLParser.getEnvironment(new File(filepath1+fname));
+                    envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
+                    envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
+                } 
+
+                envsroles.add("<NEW ROLE>");
+
+                environments = envs;
+                roles = envsroles;
+            }
+            else
+            {
+                return FormValidation.error("No files in %LEROY_HOME%/enviroments/");
+            }
+//                doFillRolesItems();
+//                doFillEnvironmentItems();
+//                doFillGoalTypeItems();
+            
+            return FormValidation.error("Client error : ");
         
+        }
          public FormValidation doCheckLeroyhome(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0)
                 return FormValidation.error("Please provide a path for leroy plugin");
             else {
-                String filepath = value + "\\agents.xml";
+                String filepath = value + "/agents.xml";
                 agents =  XMLParser.getAgents(new File(filepath));
                 
-                String filepath1 = value + "\\environments\\";
+                String filepath1 = value + "/environments/";
         
+                
                 //get file names
                 List<String> results = new ArrayList<String>();
                 File[] files = new File(filepath1).listFiles();
-
+                
+                if(files.length > 0)
+                {
                 for (File file : files) {
                     if (file.isFile()) {
                         results.add(file.getName());
@@ -249,10 +356,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                     envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
                     envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
                 } 
-
+                
+                envsroles.add("<NEW ROLE>");
+                
                 environments = envs;
                 roles = envsroles;
-
+                }
+                else
+                {
+                    return FormValidation.error("No files in %LEROY_HOME%/enviroments/");
+                }
 //                doFillRolesItems();
 //                doFillEnvironmentItems();
 //                doFillGoalTypeItems();

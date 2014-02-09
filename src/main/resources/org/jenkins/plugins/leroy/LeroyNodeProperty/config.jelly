@@ -9,8 +9,7 @@
         </f:entry>
         <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
           <f:textbox value="1337" />
-        </f:entry>   
-        
+        </f:entry>      
         <f:table class="pane">
             <f:tbody>
                 <div>        
@@ -35,15 +34,20 @@
                         <td class="pane1" >
                            <table>
                               <td class="pane1" style="width:100px;">
-                                  <label>${v}</label>
+                                  <label agentname="${v}">${v}</label>
                               </td>
                               <td class="pane1">
                                     <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
-                                    <select style="width:100px;"  fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "></select>
+                                    <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "></select>
                               </td>
                               <td class="pane1">
                                     <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
-                                    <select style="width:100px;" fillurl="/jenkins/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillRolesItems" name="_.roles" value="" class="setting-input  select "></select>
+                                    <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillRolesItems" name="_.roles" value="" class="setting-input  select "></select>
+                              </td>
+                              <td class="pane1">
+                                    <input style="visibility:hidden;display:none;width:60%;" name="_.rolename" agentname="${v}" value="" class="setting-input   " type="text" />
+                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    <button  type="button" name="_.addrole" agentname="${v}" addurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/addRole" tabindex="0" id="yui-gen1-button">Add Role</button>                              
                               </td>
                             </table>
                          </td>
@@ -61,7 +65,7 @@
                 </f:entry>
                <f:validateButton
                    title="${%Add Agent}" progress="${%Adding...}"
-                   method="addAgent" with="agentname,leroyhome" />  
+                   method="addAgent" with="agentname,leroyhome,nodename" />  
             </f:advanced>
         </f:section>    
          
