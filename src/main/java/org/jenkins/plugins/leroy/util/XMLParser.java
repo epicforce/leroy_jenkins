@@ -104,18 +104,26 @@ public class XMLParser {
 	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
 	Document doc = dBuilder.parse(fXmlFile);
  
-	doc.getDocumentElement().normalize();
+	//doc.getDocumentElement().normalize();
  
 
 	NodeList nList = doc.getElementsByTagName("environment");
  
 	for (int temp = 0; temp < nList.getLength(); temp++) {
  
-		Node nNode = nList.item(temp);
+		
+                Node nNode = nList.item(temp);
                 Element eElement = (Element) nNode;
-                //NodeList nList = eElement.getElementsByTagName("environments");
-                agents.add(eElement.getAttribute("roles"));
-	}
+                if(eElement.getAttribute("name").equalsIgnoreCase(enviromentname)){
+                NodeList nList1 = eElement.getElementsByTagName("agent");
+                for(int i = 0; i < nList1.getLength(); i++)
+                {
+                    Node nNode1 = nList1.item(temp);
+                    Element eElement1 = (Element) nNode1;
+                    agents.add(eElement1.getAttribute("roles"));
+                }
+                }
+        }
         return agents;
     } catch (Exception e) {
 	e.printStackTrace();

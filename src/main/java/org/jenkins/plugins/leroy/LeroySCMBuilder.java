@@ -12,6 +12,8 @@ import hudson.model.AbstractProject;
 import hudson.model.Build;
 import hudson.model.Hudson;
 import hudson.model.JobPropertyDescriptor;
+//import hudson.plugins.scm_sync_configuration.ScmSyncConfigurationPlugin;
+//import hudson.plugins.scm_sync_configuration.model.ScmContext;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
 import java.io.File;
@@ -51,60 +53,57 @@ import org.apache.commons.io.output.ByteArrayOutputStream;
  *
  * @author Kohsuke Kawaguchi
  */
-public class LeroyConfigurationBuilder extends Builder {
+public class LeroySCMBuilder extends Builder {
 
     
     
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public LeroyConfigurationBuilder() {
+    public LeroySCMBuilder() {
        
     }
-
+    
+    
+    
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
-//        
-//if [ -d ${LEROY_HOME}/temp-generated_configs ]; then
-// rm -rf ${LEROY_HOME}/temp-generated_configs
-//fi
-//${LEROY_HOME}/controller --generate-configs configurations.xml
-//
 
+        
         List<JobPropertyDescriptor> jobPropertyDescriptors = Functions.getJobPropertyDescriptors(NewProject.class);
         EnvVars envs = build.getEnvironment(listener);
         FilePath projectRoot = build.getWorkspace();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
+//        ScmSyncConfigurationPlugin plugin = ScmSyncConfigurationPlugin.getInstance();
         
         
-        //String leroypath = envs.expand(this.leroyhome);
-        String leroyhome = envs.get("LEROY_HOME");
-        //String workflow = envs.get("workflow");
-          
-        listener.getLogger().println("LEROY_HOME: "+leroyhome);
+//        plugin.init(projectRoot.toURI().getPath());
         
         
+        String leroypath = envs.expand(envs.get("LEROY_HOME"));
+        
+        
+//        String leroyhome = ;
+//        //String workflow = envs.get("workflow");
+//          
+//        listener.getLogger().println("LEROY_HOME: "+leroyhome);
+//        
+//        
         int returnCode;
-       
+////        int returnCode = launcher.launch().envs(envs).cmds( ,".", leroypath, "/E", "/R" ,"/Y").stdout(output).pwd(projectRoot).join();
+//        
         if(launcher.isUnix())
-        {   
-//            returnCode = launcher.launch().envs(envs).cmds("cp", "-fR", projectRoot.toURI().getPath(), leroyhome ).pwd(projectRoot).stdout(output).join();
-//            listener.getLogger().println(output.toString().trim());
-//            
-//            if(returnCode==0)
-//            {
-                returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/configuration.sh", leroyhome, projectRoot.toURI().getPath() ).pwd(projectRoot).stdout(output).join();
-                listener.getLogger().println(output.toString().trim());
-//            }
+        {           
+            returnCode = launcher.launch().envs(envs).cmds("copy", "-fR", projectRoot.toURI().getPath(), leroypath ).pwd(projectRoot).stdout(output).join();
+            listener.getLogger().println(output.toString().trim());
         }
         else
         { 
-
-                returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/configuration.bat", leroyhome, projectRoot.toURI().getPath()).pwd(projectRoot).stdout(output).join();
-                listener.getLogger().println(output.toString().trim());
-
+            
+//            returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/configuration.bat", leroyhome, projectRoot.toURI().getPath()).pwd(projectRoot).stdout(output).join();
+            listener.getLogger().println(output.toString().trim());
         }    
-          
-        return returnCode==0;
+//          
+        return true;
       }
         
         
@@ -208,7 +207,7 @@ public class LeroyConfigurationBuilder extends Builder {
          * This human readable name is used in the configuration screen.
          */
         public String getDisplayName() {
-            return "Configure Leroy";
+            return "SCM";
         }
         
         

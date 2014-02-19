@@ -88,7 +88,8 @@ jQuery(document).ready(function(){
                 var data = {
                             agentname:agentname ,
                             environmentname: jQuery('select[name="_.environment"][agentname="'+agentname+'"]').val( ),
-                            rolename: jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').val( )
+                            rolename: jQuery('input[name="_.rolename"][agentname="'+agentname+'"]').val( ),
+                            leroyhome: jQuery('input[name="_.leroyhome"]').val( )
                             };
                             console.log(data);
                 new Ajax.Request(jQuery("button[name='_.addrole']").attr("addurl"), {

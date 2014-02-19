@@ -35,7 +35,7 @@
   </parent>
 
   <artifactId>leroy</artifactId>
-  <version>1.0-SNAPSHOT</version>
+  <version>0.1-SNAPSHOT</version>
   <packaging>hpi</packaging>
 
   <name>Leroy Plugin</name>
@@ -55,6 +55,12 @@
       <email>ydawji@gmail.com</email>
     </developer>
   </developers>
+
+   <properties>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <powermock.version>1.4.8</powermock.version>
+  </properties>
+      
 
   <repositories>
     <repository>
@@ -96,9 +102,36 @@
         <artifactId>jquery</artifactId>
         <version>1.0.2</version>
     </dependency>
+    <dependency>
+              <groupId>org.jenkins-ci.main</groupId>
+              <artifactId>maven-plugin</artifactId>
+              <version>${project.parent.version}</version>
+              <exclusions>
+                  <exclusion>
+                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                      <groupId>org.jvnet.hudson.plugins</groupId>
+                      <artifactId>subversion</artifactId>
+                  </exclusion>
+              </exclusions>
+          </dependency>
+          
+    
   </dependencies>
 
  <build>
+     <pluginManagement>
+	<plugins>
+           
+            <plugin>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Needed to avoid some permgen space errors during test execution ... -->
+                    <argLine>-XX:MaxPermSize=128m</argLine>
+                </configuration>
+            </plugin>
+            
+		</plugins>
+	</pluginManagement>
     <plugins>
       <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
@@ -110,6 +143,35 @@
       </plugin>
     </plugins>
   </build>
+  <dependencyManagement>
+      <dependencies>
+          <dependency>
+              <groupId>org.jenkins-ci.main</groupId>
+              <artifactId>maven-plugin</artifactId>
+              <version>${project.parent.version}</version>
+              <exclusions>
+                  <exclusion>
+                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                      <groupId>org.jvnet.hudson.plugins</groupId>
+                      <artifactId>subversion</artifactId>
+                  </exclusion>
+              </exclusions>
+          </dependency>
+          <dependency>
+              <groupId>org.jenkins-ci.main</groupId>
+              <artifactId>jenkins-test-harness</artifactId>
+              <version>${project.parent.version}</version>
+              <exclusions>
+                  <exclusion>
+                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                      <groupId>org.jvnet.hudson.plugins</groupId>
+                      <artifactId>subversion</artifactId>
+                  </exclusion>
+              </exclusions>
+          </dependency>
+      </dependencies>
+  </dependencyManagement>
+
   
   <reporting>
     <plugins>

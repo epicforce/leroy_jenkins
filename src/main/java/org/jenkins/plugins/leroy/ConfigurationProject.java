@@ -44,6 +44,7 @@ import hudson.model.ResourceActivity;
 import hudson.model.SCMedItem;
 import hudson.model.Saveable;
 import hudson.model.TopLevelItem;
+import hudson.tasks.ArtifactArchiver;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrappers;
@@ -72,7 +73,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 /**
  * Buildable software project.
  *
- * @author Kohsuke Kawaguchi
+ * @author Yunus Dawji
  */
 public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B extends ConfigurationBuild<P,B>>
      extends AbstractProject<P,B>  implements SCMedItem, Saveable, ProjectWithMaven, BuildableItemWithBuildWrappers {
@@ -119,23 +120,33 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
     }
 
     public List<Builder> getBuilders() {
-        LeroyConfigurationBuilder  a = new LeroyConfigurationBuilder("","","");
+        LeroyConfigurationBuilder  a = new LeroyConfigurationBuilder();
+        LeroySCMBuilder scm = new LeroySCMBuilder();
         List<Builder> temp =  getBuildersList().toList();
         List<Builder> temp1 =  new ArrayList<Builder>();
         
         ListIterator<Builder> ite = temp.listIterator();
         boolean check = false;
+        boolean check1 = false;
         while(ite.hasNext())
         {
             Builder ele = ite.next();
-                temp1.add(ele);
+            temp1.add(ele);
             
             if(ele instanceof LeroyConfigurationBuilder)
                 check = true;
+            
+            if(ele instanceof LeroySCMBuilder)
+                check1 = true;
 
+            
         }
+//        if(!check1)
+//            temp1.add(scm);
+       
         if(!check)
             temp1.add((Builder)a);
+        
         
         return temp1;
         
@@ -161,6 +172,26 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
         if (publishers == null) {
             publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
         }
+        
+        ArtifactArchiver artifactArchiver = new ArtifactArchiver("**","",false);
+//        List<Publisher> temp =  getPublishersList().toList();
+        ListIterator<Publisher> ite = publishers.listIterator();
+        boolean check = false;
+  
+        while(ite.hasNext())
+        {
+            Publisher ele = ite.next();
+            
+            
+            if(ele instanceof ArtifactArchiver)
+                check = true;
+
+            
+        }
+        
+        if(!check)
+            publishers.add((Publisher)artifactArchiver);
+        
         return publishers;
     }
 

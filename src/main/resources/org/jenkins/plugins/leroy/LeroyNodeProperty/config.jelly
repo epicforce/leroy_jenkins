@@ -9,7 +9,31 @@
         </f:entry>
         <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
           <f:textbox value="1337" />
-        </f:entry>      
+        </f:entry>   
+    </f:block>       
+  </f:section>
+ <f:section title="Leroy SCM">
+    <f:block>
+      
+        <f:entry field="scm" title="Repoistory Type">
+            <f:select >
+                <f:option value="git">git</f:option>
+                <f:option value="svn">svn</f:option>
+            </f:select>
+        </f:entry>
+        
+        <f:entry field="repositoryurl" title="${%Repository URL}"  >
+           <f:textbox />
+        </f:entry>        
+
+        
+        
+      
+
+    </f:block>       
+  </f:section>
+<!--  <f:section >
+      <f:block>
         <f:table class="pane">
             <f:tbody>
                 <div>        
@@ -37,16 +61,16 @@
                                   <label agentname="${v}">${v}</label>
                               </td>
                               <td class="pane1">
-                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    hardcoded html tag instead of jelly tag because of html table rendering issues
                                     <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "></select>
                               </td>
                               <td class="pane1">
-                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    hardcoded html tag instead of jelly tag because of html table rendering issues
                                     <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillRolesItems" name="_.roles" value="" class="setting-input  select "></select>
                               </td>
                               <td class="pane1">
                                     <input style="visibility:hidden;display:none;width:60%;" name="_.rolename" agentname="${v}" value="" class="setting-input   " type="text" />
-                                    <!--hardcoded html tag instead of jelly tag because of html table rendering issues-->
+                                    hardcoded html tag instead of jelly tag because of html table rendering issues
                                     <button  type="button" name="_.addrole" agentname="${v}" addurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/addRole" tabindex="0" id="yui-gen1-button">Add Role</button>                              
                               </td>
                             </table>
@@ -70,5 +94,5 @@
         </f:section>    
          
     </f:block>    
-  </f:section>
+  </f:section>-->
 </j:jelly>  

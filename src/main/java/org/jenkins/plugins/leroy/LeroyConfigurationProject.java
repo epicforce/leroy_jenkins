@@ -8,6 +8,7 @@ import hudson.Extension;
 import hudson.Functions;
 import hudson.model.AbstractProject;
 import hudson.model.ChoiceParameterDefinition;
+import hudson.model.Computer;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.JobPropertyDescriptor;
@@ -85,8 +86,11 @@ public class LeroyConfigurationProject extends ConfigurationProject<LeroyConfigu
     
 
     public LeroyConfigurationProject(ItemGroup parent, String name) throws IOException {
-        super(parent, name);
-        
+          super(parent, name);
+          //Functions.getEnvVs();
+          
+//          String scmtype = (String) Functions.getEnvVars().get("SCM_TYPE");
+//          this.setScm(null);
 //        String worflow = "Workflow";
 //        String[] choices = new String[4];
 //        choices[0] = "intialize";
