@@ -121,7 +121,6 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
 
     public List<Builder> getBuilders() {
         LeroyConfigurationBuilder  a = new LeroyConfigurationBuilder();
-        LeroySCMBuilder scm = new LeroySCMBuilder();
         List<Builder> temp =  getBuildersList().toList();
         List<Builder> temp1 =  new ArrayList<Builder>();
         
@@ -136,14 +135,9 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
             if(ele instanceof LeroyConfigurationBuilder)
                 check = true;
             
-            if(ele instanceof LeroySCMBuilder)
-                check1 = true;
-
+        
             
         }
-//        if(!check1)
-//            temp1.add(scm);
-       
         if(!check)
             temp1.add((Builder)a);
         

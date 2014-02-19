@@ -47,7 +47,6 @@ import java.util.Collection;
 import java.util.List;
 import java.util.logging.Logger;
 
-import static hudson.model.Result.ABORTED;
 import static hudson.model.Result.FAILURE;
 
 /**

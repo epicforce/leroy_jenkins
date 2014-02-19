@@ -23,11 +23,6 @@
  */
 package org.jenkins.plugins.leroy;
 
-import hudson.model.AbstractProject;
-import hudson.model.ItemGroup;
-import hudson.slaves.WorkspaceList;
-import hudson.slaves.WorkspaceList.Lease;
-
 import java.io.IOException;
 import java.io.File;
 
