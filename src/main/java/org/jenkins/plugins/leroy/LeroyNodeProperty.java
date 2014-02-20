@@ -211,7 +211,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             for (String role : roles) {
                 items.add(role,role);
             }
-             return items;
+            return items;
         }
         
         public ListBoxModel doFillEnvironmentItems() {
@@ -230,6 +230,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             //}
             return items;
         }
+        
         public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyhome, 
                 @QueryParameter("agentname") final String agentname, 
                 @QueryParameter("nodename") final String nodename ) 
@@ -358,7 +359,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 
                 for(String fname : results)
                 {
-                    XMLParser.getEnvironment(new File(filepath1+fname));
+                    //XMLParser.getEnvironment(new File(filepath1+fname));
                     envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
                     envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
                 } 

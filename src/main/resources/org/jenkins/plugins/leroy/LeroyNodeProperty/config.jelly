@@ -12,29 +12,9 @@
         </f:entry>   
     </f:block>       
   </f:section>
- <f:section title="Leroy SCM">
-    <f:block>
-      
-        <f:entry field="scm" title="Repoistory Type">
-            <f:select >
-                <f:option value="git">git</f:option>
-                <f:option value="svn">svn</f:option>
-            </f:select>
-        </f:entry>
-        
-        <f:entry field="repositoryurl" title="${%Repository URL}"  >
-           <f:textbox />
-        </f:entry>        
-
-        
-        
-      
-
-    </f:block>       
-  </f:section>
 <!--  <f:section >
       <f:block>
-        <f:table class="pane">
+        <f:table class="panek">
             <f:tbody>
                 <div>        
                     <tr style="margin-left:50px;height:20px;">

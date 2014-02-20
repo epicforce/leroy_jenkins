@@ -7,9 +7,7 @@ SET K="a"
 echo "Copying configuration to leroy home"
 xcopy /E /R /Y /Q "%CURRENTDIR%" "%1\" > K
 
-c:
-
-cd "%1"
+cd /d "%1"
 
 IF EXIST "%1\temp-generated_configs." (
 	RD /S /Q "%1/temp-generated_configs."

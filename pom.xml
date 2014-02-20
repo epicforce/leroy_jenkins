@@ -103,19 +103,24 @@
         <version>1.0.2</version>
     </dependency>
     <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>copyartifact</artifactId>
+            <version>1.30</version>
+    </dependency>
+<!--    <dependency>
               <groupId>org.jenkins-ci.main</groupId>
               <artifactId>maven-plugin</artifactId>
               <version>${project.parent.version}</version>
               <exclusions>
                   <exclusion>
-                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                       Conflicts with org.jenkins-ci.plugins:subversion dependency 
                       <groupId>org.jvnet.hudson.plugins</groupId>
                       <artifactId>subversion</artifactId>
                   </exclusion>
               </exclusions>
           </dependency>
           
-    
+    -->
   </dependencies>
 
  <build>
@@ -140,6 +145,12 @@
         <configuration>
           <dependencyResolution>compile</dependencyResolution>
         </configuration>
+       
+      </plugin>
+      <plugin>
+          <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>copyartifact</artifactId>
+            <version>1.30</version>
       </plugin>
     </plugins>
   </build>
@@ -169,6 +180,11 @@
                   </exclusion>
               </exclusions>
           </dependency>
+          <dependency>
+            <groupId>org.jenkins-ci.plugins</groupId>
+            <artifactId>copyartifact</artifactId>
+            <version>1.30</version>
+        </dependency>
       </dependencies>
   </dependencyManagement>
 

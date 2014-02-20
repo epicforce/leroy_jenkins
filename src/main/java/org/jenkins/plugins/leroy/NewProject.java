@@ -44,6 +44,9 @@ import hudson.model.ResourceActivity;
 import hudson.model.SCMedItem;
 import hudson.model.Saveable;
 import hudson.model.TopLevelItem;
+import hudson.plugins.copyartifact.BuildSelector;
+import hudson.plugins.copyartifact.CopyArtifact;
+import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrappers;
@@ -68,6 +71,8 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Buildable software project.
@@ -120,11 +125,20 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
     public List<Builder> getBuilders() {
         LeroyBuilder  a = new LeroyBuilder("","","");
+        CopyArtifact copyartifact = null;
+        try {
+             copyartifact = new CopyArtifact("", "", new StatusBuildSelector(true), "", LeroyBuilder.getLeroyhome()+"/artifacts/",false, false, true);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
+        }
         List<Builder> temp =  getBuildersList().toList();
         List<Builder> temp1 =  new ArrayList<Builder>();
-        
+       
         ListIterator<Builder> ite = temp.listIterator();
         boolean check = false;
+        boolean hasCopyartifact = false;
         while(ite.hasNext())
         {
             Builder ele = ite.next();
@@ -132,10 +146,16 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             
             if(ele instanceof LeroyBuilder)
                 check = true;
-
+            if(ele instanceof CopyArtifact)
+                hasCopyartifact = true;
         }
+        
+        if(!hasCopyartifact)
+            temp1.add((Builder)copyartifact);
+        
         if(!check)
             temp1.add((Builder)a);
+        
         
         return temp1;
         
