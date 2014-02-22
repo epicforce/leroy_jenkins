@@ -24,6 +24,7 @@
  */
 package org.jenkins.plugins.leroy;
 
+import com.google.gson.Gson;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
@@ -63,6 +64,7 @@ import hudson.tasks.Maven;
 import hudson.tasks.Maven.ProjectWithMaven;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.triggers.Trigger;
+import hudson.util.CopyOnWriteList;
 import hudson.util.DescribableList;
 import hudson.util.ListBoxModel;
 import java.io.File;
@@ -76,6 +78,7 @@ import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
@@ -86,6 +89,7 @@ import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 /**
@@ -273,10 +277,10 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 //
     @Override
     protected void submit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
-        super.submit(req,rsp);
-  
+   
         JSONObject json = req.getSubmittedForm();
-        
+
+        super.submit(req,rsp);
         getBuildWrappersList().rebuild(req,json, BuildWrappers.getFor(this));
         getBuildersList().rebuildHetero(req,json, Builder.all(), "builder");
         getPublishersList().rebuildHetero(req, json, Publisher.all(), "publisher");
@@ -297,17 +301,41 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
         return r;
     }
-    
+    /**
+     * new doConfigSubmit to update build with parameters
+     * @param req
+     * @param rsp
+     * @throws IOException
+     * @throws ServletException
+     * @throws hudson.model.Descriptor.FormException 
+     * 
+     */
     @Override
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         
+        JSONObject json = req.getSubmittedForm();
+        
+        JSONObject properties = json.getJSONObject("properties");
        
+        properties.remove("hudson-model-ParametersDefinitionProperty");
         String worflow = "Workflow";
         
         List<String> choiceslist = getWorkflowItems();
         String[] choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
         
+        //choices to string
+        Iterator<String> ite = choiceslist.iterator();
+        String tempworkflow ="";
+        while(ite.hasNext())
+        {
+            String tempp = ite.next();
+            
+            tempworkflow = tempworkflow + tempp + "\\n";
+        }
+        
+        if(tempworkflow.length()>2)
+            tempworkflow = tempworkflow.substring(0,tempworkflow.length()-2);
        
         String description ="";
         ChoiceParameterDefinition test = new ChoiceParameterDefinition( worflow, choices,  description);
@@ -317,31 +345,39 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         choiceslist = getEnvrnItems();
         choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
+        //choices to string
+        ite = choiceslist.iterator();
+        String tempenv ="";
+        while(ite.hasNext())
+        {
+            String tempp = ite.next();
+            
+            tempenv = tempenv + tempp + "\\n";
+        }
+        
+        if(tempenv.length()>2)
+            tempenv = tempenv.substring(0,tempenv.length()-2);
        
         description ="";
         ChoiceParameterDefinition test1 = new ChoiceParameterDefinition( env, choices,  description);
         
         paramsl.add(test);
         paramsl.add(test1);
-      
-        this.getProperty(ParametersDefinitionProperty.class);
+        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
        
+        //Gson gson = new Gson();
+        properties.put("hudson-model-ParametersDefinitionProperty",JSONObject.fromObject(parameterkey));
+        
+        req.bindJSON(req,properties);
+        
         super.addProperty(new ParametersDefinitionProperty(paramsl));
+        
         save();
         super.doConfigSubmit(req,rsp);
     
-//        updateTransientActions();
-//
-//        Set<AbstractProject> upstream = Collections.emptySet();
-//        if(req.getParameter("pseudoUpstreamTrigger")!=null) {
-//            upstream = new HashSet<AbstractProject>(Items.fromNameList(getParent(),req.getParameter("upstreamProjects"),AbstractProject.class));
-//        }
-//
-//        convertUpstreamBuildTrigger(upstream);
-//
-//        // notify the queue as the project might be now tied to different node
+
+        // notify the queue as the project might be now tied to different node
         Jenkins.getInstance().getQueue().scheduleMaintenance();
-//
 //        // this is to reflect the upstream build adjustments done above
         Jenkins.getInstance().rebuildDependencyGraphAsync();
     }
