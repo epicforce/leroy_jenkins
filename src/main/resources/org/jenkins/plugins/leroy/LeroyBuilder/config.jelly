@@ -8,6 +8,7 @@
   </f:section>-->
   <f:section title="Build Settings">
     <f:block>
+        
         <f:entry title="Workflow" field="workflow">
             <f:select />         
         </f:entry>    

@@ -33,6 +33,20 @@ THE SOFTWARE.
   </p:config-trigger>
   <p:config-buildWrappers />
 --> 
+<script>
+    var foo = <st:bind value="${instance}"/>
+
+    
+     function btn() { 
+        
+    foo.getWo(function(t) {
+       console.log(t);
+    });
+    
+    }
+  </script>
+<button  name="getWorkEnv"
+           onclick="btn();" >btn</button> 
     <p:config-builders />
   <p:config-publishers2 />
 </j:jelly>

@@ -5,17 +5,24 @@
 package org.jenkins.plugins.leroy;
 
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Functions;
+import hudson.Launcher;
 import hudson.model.ChoiceParameterDefinition;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.JobPropertyDescriptor;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
+import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
+import hudson.scm.SCM;
+import hudson.util.FormValidation;
+import hudson.util.ListBoxModel;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -26,9 +33,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+import javax.servlet.ServletException;
 import jenkins.model.Jenkins;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 /**
  *
@@ -145,6 +155,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
         return path;
     }
    
+     
    
     
      /**
@@ -155,6 +166,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
     @Extension(ordinal=1000)
     public final static NewFreeStyleProject.DescriptorImpl DESCRIPTOR = new NewFreeStyleProject.DescriptorImpl();
 
+    
 
     public static class DescriptorImpl extends AbstractProjectDescriptor  {
        
@@ -162,6 +174,8 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
             return "Leroy Jenkins Job";
         }
 
+        
+        
         public NewFreeStyleProject newInstance(ItemGroup parent, String name) {
             try {
                 return new NewFreeStyleProject(parent,name);

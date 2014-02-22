@@ -60,5 +60,7 @@ THE SOFTWARE.
     </f:advanced>
   </f:section>
 -->
+
   <this:configure-scm/>
+  
 </j:jelly>

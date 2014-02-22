@@ -16,6 +16,7 @@ import hudson.model.TaskListener;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.util.ListBoxModel;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -27,6 +28,8 @@ import static java.nio.file.StandardCopyOption.*;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -39,6 +42,7 @@ import jenkins.model.Jenkins;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
+import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 /**
  * <p>
@@ -52,11 +56,13 @@ public class LeroyBuilder extends Builder {
     
     private String workflow;
     
+    private static List<String> envrnlist;
+    
+    private static List<String> workflowlist;
     
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
     public LeroyBuilder(String leroyhome, String envrn, String workflow) {
-        
         this.envrn = envrn;
         this.workflow = workflow;
     }
@@ -233,7 +239,7 @@ public class LeroyBuilder extends Builder {
 		}
 
 	}
-    
+
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
          public DescriptorImpl() {
@@ -274,6 +280,8 @@ public class LeroyBuilder extends Builder {
             for (String envs : envsroles) {
                 items.add(envs,envs);
             }
+            
+            
             return items;
             
         }
@@ -322,6 +330,7 @@ public class LeroyBuilder extends Builder {
             return items;
         }
       
+       
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             return true;
         }
