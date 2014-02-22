@@ -125,7 +125,6 @@ public class LeroyBuilder extends Builder {
             returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", leroypath).stdout(output).pwd(projectRoot).join();
             listener.getLogger().println(output.toString().trim());
             
-            
             if(returnCode==0)
             {
                 returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,this.workflow, this.envrn).stdout(listener.getLogger()).pwd(projectRoot).join();

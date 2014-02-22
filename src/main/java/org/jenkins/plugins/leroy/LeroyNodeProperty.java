@@ -29,7 +29,10 @@ import hudson.Functions;
 import hudson.Launcher;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
+import hudson.model.Computer;
 import hudson.model.ComputerSet;
+import hudson.model.Descriptor;
+import hudson.model.Descriptor.FormException;
 import hudson.model.Environment;
 import hudson.model.Hudson;
 import hudson.model.Node;
@@ -50,8 +53,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
+import org.kohsuke.stapler.StaplerRequest;
 
 /**
  * {@link NodeProperty} that sets additional node properties.
@@ -160,6 +168,25 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         return envs;
     }
     
+     /**
+     * Get LEROY_HOME
+     */
+//    public int hasOtherNode() throws InterruptedException, IOException {
+//        Jenkins jenkins = Jenkins.getInstance();
+//        Computer[] computers = jenkins.getComputers();
+//        
+//        for(int i = 0; i < computers.length; i++)
+//        {
+//             EnvVars envs = computers[i].buildEnvironment(TaskListener.NULL); 
+//             if(envs.containsKey("IS_LEROY_NODE"))
+//             {
+//                 return envs.get("LEROY_HOME");
+//             }
+//        }
+//        
+//        return null;
+//    }
+    
     
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher,
@@ -168,8 +195,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
            env.put("IS_LEROY_NODE", "TRUE");
            env.put("LEROY_HOME", getLeroyhome());
            env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
-           env.put("REPOSITORY_URL", getRepositoryurl());
-           env.put("SCM_TYPE", getScm());
+//           env.put("REPOSITORY_URL", getRepositoryurl());
+//           env.put("SCM_TYPE", getScm());
            return Environment.create(env);
     }
 
@@ -178,15 +205,60 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         env.put("IS_LEROY_NODE", "TRUE");
         env.put("LEROY_HOME", getLeroyhome());
         env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
-        env.put("REPOSITORY_URL", getRepositoryurl());
-        env.put("SCM_TYPE", getScm());                   
+//        env.put("REPOSITORY_URL", getRepositoryurl());
+//        env.put("SCM_TYPE", getScm());                   
     }
     
     public String getNodeName(){
         return this.node.getNodeName();
     }
         
+    @Override
+    public NodeProperty<?> reconfigure(org.kohsuke.stapler.StaplerRequest req, net.sf.json.JSONObject form) throws Descriptor.FormException {
+        
+        String requesturl = req.getOriginalRequestURI();
+        JSONObject json = null;
+        try {
+       
+            json = req.getSubmittedForm();
+            
+            JSONObject nodeproperties = json.getJSONObject("nodeProperties");
+ 
+            if(nodeproperties.containsKey("org-jenkins-plugins-leroy-LeroyNodeProperty"))
+            {                 
+                Jenkins jenkins = Jenkins.getInstance();
+                Computer[] computers = jenkins.getComputers();
 
+                for(int i = 0; i < computers.length; i++)
+                {
+                    EnvVars envs = null; 
+                    envs = computers[i].buildEnvironment(TaskListener.NULL);
+
+                    String name = computers[i].getName();
+                    
+                    if(computers[i].getName()=="" && envs.containsKey("IS_LEROY_NODE") &&  !requesturl.contains("master"))
+                    {    
+                        throw new Descriptor.FormException("There cannot be more that one leroy node","");
+                    }            
+                    else if(computers[i].getName()!="" && envs.containsKey("IS_LEROY_NODE") &&  !requesturl.contains(computers[i].getName()))
+                    {
+                        throw new Descriptor.FormException("There cannot be more that one leroy node","");
+                    }
+
+                }
+            }
+        } catch (ServletException ex) {
+            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (IOException ex) {
+            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (InterruptedException ex) {
+            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        
+        return super.reconfigure(req, form);
+    }
+    
     /**
      *
      */
@@ -390,6 +462,14 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 // show the help for the global config page
                 return "/help/system-config/globalEnvironmentVariables.html";
             }
+        }
+        
+       
+        
+        @Override
+        public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
+            save();
+            return super.configure(req,formData);
         }
     }
 

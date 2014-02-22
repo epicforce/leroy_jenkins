@@ -139,6 +139,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
     public List<Builder> getBuilders() {
         LeroyBuilder  a = new LeroyBuilder("","","");
+        
         CopyArtifact copyartifact = null;
         try {
              copyartifact = new CopyArtifact("", "", new StatusBuildSelector(true), "", LeroyBuilder.getLeroyhome()+"/artifacts/",false, false, true);
@@ -169,7 +170,6 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
         if(!check)
             temp1.add((Builder)a);
-        
         
         return temp1;
         
@@ -276,7 +276,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         super.submit(req,rsp);
   
         JSONObject json = req.getSubmittedForm();
-
+        
         getBuildWrappersList().rebuild(req,json, BuildWrappers.getFor(this));
         getBuildersList().rebuildHetero(req,json, Builder.all(), "builder");
         getPublishersList().rebuildHetero(req, json, Publisher.all(), "publisher");
@@ -301,8 +301,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
     @Override
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
         
-        super.doConfigSubmit(req,rsp);
-    
+       
         String worflow = "Workflow";
         
         List<String> choiceslist = getWorkflowItems();
@@ -328,8 +327,9 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         this.getProperty(ParametersDefinitionProperty.class);
        
         super.addProperty(new ParametersDefinitionProperty(paramsl));
-        
-        
+        save();
+        super.doConfigSubmit(req,rsp);
+    
 //        updateTransientActions();
 //
 //        Set<AbstractProject> upstream = Collections.emptySet();
