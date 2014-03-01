@@ -56,15 +56,18 @@ public class LeroyBuilder extends Builder {
     
     private String workflow;
     
+    private String projectname;
+    
     private static List<String> envrnlist;
     
     private static List<String> workflowlist;
     
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public LeroyBuilder(String leroyhome, String envrn, String workflow) {
+    public LeroyBuilder(String leroyhome, String envrn, String workflow, String projectname) {
         this.envrn = envrn;
         this.workflow = workflow;
+        this.projectname = projectname;
     }
 
     
@@ -103,6 +106,9 @@ public class LeroyBuilder extends Builder {
         return envrn;
     }
   
+    public String getProjectname() {
+        return projectname;
+    }
    
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
@@ -112,8 +118,8 @@ public class LeroyBuilder extends Builder {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         
         String leroypath = envs.expand(this.getLeroyhome());
-//        String envrn = envs.get("environment");
-//        String workflow = envs.get("workflow");
+        String envrn = envs.get("Environment");
+        String workflow = envs.get("Workflow");
         
         
         listener.getLogger().println("LEROY_HOME: " + leroypath);
@@ -127,13 +133,13 @@ public class LeroyBuilder extends Builder {
             
             if(returnCode==0)
             {
-                returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,this.workflow, this.envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
+                returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
                 listener.getLogger().println(output.toString().trim());
             }
         }
         else
         { 
-            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", "." ,leroypath, this.workflow, this.envrn).stdout(output).pwd(projectRoot).join();
+            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", "." ,leroypath, workflow, envrn).stdout(output).pwd(projectRoot).join();
             listener.getLogger().println(output.toString().trim());
         
             
@@ -308,7 +314,7 @@ public class LeroyBuilder extends Builder {
                     if (file.isFile() && file.getName().contains(".xml")) {
                         results.add(file.getName().substring(0, file.getName().length()-4));
                     }
-                    if (file.isDirectory()) {
+                    if (file.isDirectory() && !(file.isHidden()) && file.getName().charAt(0)=='.') {
                        
                         File[] files1 = new File(workflowpath).listFiles();
                         if(files.length > 0)

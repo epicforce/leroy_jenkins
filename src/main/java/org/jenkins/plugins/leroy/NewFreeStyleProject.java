@@ -8,20 +8,26 @@ import hudson.Extension;
 import hudson.FilePath;
 import hudson.Functions;
 import hudson.Launcher;
+import hudson.model.AbstractBuild;
 import hudson.model.ChoiceParameterDefinition;
 import hudson.model.Hudson;
 import hudson.model.ItemGroup;
 import hudson.model.JobPropertyDescriptor;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
+import hudson.model.StreamBuildListener;
 import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.scm.SCM;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -154,8 +160,76 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
         //PluginWrapper wrapper = Hudson.getInstance().getPluginManager().getPlugin();
         return path;
     }
-   
-     
+   /**
+           * get workflow and environment from scm 
+         * 
+         * @return 
+         */
+        @JavaScriptMethod 
+        public boolean getWo() 
+                throws IOException, ServletException {
+                 ByteArrayOutputStream output = new ByteArrayOutputStream();
+               
+            try {
+                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+                Writer writer = null;
+
+                SCM scm = this.getScm();
+                
+                //check what if file doesn't exists
+                FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"));
+               // boolean check = true;
+//                getProject().getScmCheckoutStrategy().preCheckout(.this, launcher, this.listener);
+//                getProject().getScmCheckoutStrategy().checkout(this);
+                File tempfile = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/temp1.txt");
+                File tempfile1 = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/temp2.txt");
+                
+                AbstractBuild build = new NewFreeStyleBuild(this,tempfile );
+                StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile1));         
+               boolean check = this.checkout(build, launcher, stream, tempfile);
+//                
+//                try {
+//                    writer = new BufferedWriter(new OutputStreamWriter(
+//                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
+//                    if(launcher.isUnix())
+//                        writer.write("1\n"+agentname+"\n");
+//                       
+//                    else
+//                        writer.write("3\r\n"+agentname+"\r\n");
+//                } catch (IOException ex) {
+//                  return FormValidation.error("error creating file: "+ex.getMessage());
+//                } finally {
+//                   try {writer.close();} catch (Exception ex) {}
+//                }
+//              
+//                int returnCode = 0;
+//                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
+//                launcher.decorateByEnv(envs);
+//
+//                if(launcher.isUnix())
+//                {                
+//                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.sh", leroyhome, agentname).pwd(leroyhome).stdout(output).join();
+//                }
+//                else
+//                    returnCode = launcher.launch().envs(Functions.getEnvVars()).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.bat" , leroyhome, leroyhome+"/controller.exe" ).join();
+//                
+//                int returnCode1 = 0;
+//              
+//                if(check)
+//                {
+//                    return FormValidation.ok("Success");
+//                }
+//                
+//                return FormValidation.error("Failed to add agent" + output);
+//          
+                return check;
+                
+            } catch (Exception e) {
+                return false;
+//                return FormValidation.error("Client error : "+e.getMessage());
+            }
+            
+        }
    
     
      /**

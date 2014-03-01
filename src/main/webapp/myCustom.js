@@ -30,7 +30,7 @@ jQuery(document).ready(function(){
                 if (!selectionSet && possibleIndex!=null)
                     l.selectedIndex = possibleIndex;
             }
-        });
+      });
         
      //get roles ajax
      new Ajax.Request(jQuery("select[name='_.roles']").attr("fillurl"), {

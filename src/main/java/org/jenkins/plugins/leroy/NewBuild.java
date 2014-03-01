@@ -217,5 +217,10 @@ public abstract class NewBuild <P extends NewProject<P,B>,B extends NewBuild<P,B
         }
     }
 
+     public boolean doWo() 
+     {  
+        return true;
+     }
+    
     private static final Logger LOGGER = Logger.getLogger(NewBuild.class.getName());
 }

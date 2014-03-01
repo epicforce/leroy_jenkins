@@ -2,3 +2,8 @@
     display: none;
     visibility: hidden;
 } 
+
+#main-table[style]{
+
+    background-image: url(image.png) !important;	
+}

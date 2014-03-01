@@ -24,14 +24,13 @@
  */
 package org.jenkins.plugins.leroy;
 
-import com.google.gson.Gson;
 import hudson.FilePath;
-import hudson.Functions;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.model.AbstractItem;
+import hudson.model.AbstractBuild;
 import hudson.model.AbstractProject;
 import hudson.model.Action;
+import hudson.model.BuildListener;
 import hudson.model.BuildableItemWithBuildWrappers;
 import hudson.model.ChoiceParameterDefinition;
 import hudson.model.DependencyGraph;
@@ -40,17 +39,13 @@ import hudson.model.Descriptor.FormException;
 import hudson.model.Hudson;
 import hudson.model.Item;
 import hudson.model.ItemGroup;
-import hudson.model.Items;
-import hudson.model.JobProperty;
-import hudson.model.JobPropertyDescriptor;
 import hudson.model.ParameterDefinition;
 import hudson.model.ParametersDefinitionProperty;
 import hudson.model.ResourceActivity;
 import hudson.model.SCMedItem;
 import hudson.model.Saveable;
+import hudson.model.StreamBuildListener;
 import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
-import hudson.plugins.copyartifact.BuildSelector;
 import hudson.plugins.copyartifact.CopyArtifact;
 import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.scm.SCM;
@@ -64,10 +59,10 @@ import hudson.tasks.Maven;
 import hudson.tasks.Maven.ProjectWithMaven;
 import hudson.tasks.Maven.MavenInstallation;
 import hudson.triggers.Trigger;
-import hudson.util.CopyOnWriteList;
 import hudson.util.DescribableList;
 import hudson.util.ListBoxModel;
 import java.io.File;
+import java.io.FileOutputStream;
 import net.sf.json.JSONObject;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -76,21 +71,18 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.XMLParser;
-import org.kohsuke.stapler.Stapler;
-import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 /**
  * Buildable software project.
@@ -121,6 +113,11 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
     private static final AtomicReferenceFieldUpdater<NewProject,DescribableList> buildWrappersSetter
             = AtomicReferenceFieldUpdater.newUpdater(NewProject.class,DescribableList.class,"buildWrappers");
 
+    
+    private List<String> workflow;
+    
+    private List<String> environment;
+    
     /**
      * Creates a new project.
      */
@@ -129,7 +126,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
     }
 
-   
+    @Override
     public void onLoad(ItemGroup<? extends Item> parent, String name) throws IOException {
         super.onLoad((ItemGroup)parent, name);
         getBuildersList().setOwner(this);
@@ -142,11 +139,17 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
     }
 
     public List<Builder> getBuilders() {
-        LeroyBuilder  a = new LeroyBuilder("","","");
+        LeroyBuilder  a = new LeroyBuilder("","","",this.getName());
         
         CopyArtifact copyartifact = null;
         try {
-             copyartifact = new CopyArtifact("", "", new StatusBuildSelector(true), "", LeroyBuilder.getLeroyhome()+"/artifacts/",false, false, true);
+            String leroybuilderpath = LeroyBuilder.getLeroyhome();
+           
+            if(leroybuilderpath.charAt(leroybuilderpath.length()-1)=='/'||leroybuilderpath.charAt(leroybuilderpath.length()-1)=='\\')
+                leroybuilderpath = leroybuilderpath + "artifacts/";
+            else
+                leroybuilderpath = leroybuilderpath + "/artifacts/";
+             copyartifact = new CopyArtifact("", "", new StatusBuildSelector(true), "", leroybuilderpath,false, false, true);
         } catch (InterruptedException ex) {
             Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
@@ -156,8 +159,10 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         List<Builder> temp1 =  new ArrayList<Builder>();
        
         ListIterator<Builder> ite = temp.listIterator();
+        
         boolean check = false;
         boolean hasCopyartifact = false;
+        
         while(ite.hasNext())
         {
             Builder ele = ite.next();
@@ -270,11 +275,11 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         return null;
     }
 
-//
-//
-// actions
-//
-//
+    //
+    //
+    // actions
+    //
+    //
     @Override
     protected void submit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
    
@@ -320,7 +325,13 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         properties.remove("hudson-model-ParametersDefinitionProperty");
         String worflow = "Workflow";
         
-        List<String> choiceslist = getWorkflowItems();
+        doFillEnvrnItems();
+        doFillWorkflowItems();
+        List<String> choiceslist;
+        if(workflow!=null)
+            choiceslist  = workflow;
+        else
+            choiceslist = getWorkflowItems();
         String[] choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
         
@@ -329,8 +340,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         String tempworkflow ="";
         while(ite.hasNext())
         {
-            String tempp = ite.next();
-            
+            String tempp = ite.next();          
             tempworkflow = tempworkflow + tempp + "\\n";
         }
         
@@ -342,7 +352,11 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
         
         String env = "Environment";
-        choiceslist = getEnvrnItems();
+        if(environment!=null)
+            choiceslist  = environment;
+        else
+            choiceslist = getEnvrnItems();
+        
         choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
         //choices to string
@@ -351,7 +365,6 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         while(ite.hasNext())
         {
             String tempp = ite.next();
-            
             tempenv = tempenv + tempp + "\\n";
         }
         
@@ -363,6 +376,8 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
         paramsl.add(test);
         paramsl.add(test1);
+        
+        //this is a hack(need to figureout a better a way)(IMP!!!)
         String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
        
         //Gson gson = new Gson();
@@ -378,7 +393,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
         // notify the queue as the project might be now tied to different node
         Jenkins.getInstance().getQueue().scheduleMaintenance();
-//        // this is to reflect the upstream build adjustments done above
+        // this is to reflect the upstream build adjustments done above
         Jenkins.getInstance().rebuildDependencyGraphAsync();
     }
     
@@ -388,20 +403,18 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             String envspath = "";
             
             try {
-                envspath = LeroyBuilder.getLeroyhome() + "/environments.xml";
+                envspath = LeroyBuilder.getLeroyhome() + "/environments.xml";          
+                List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
+
+                for (String envs : envsroles) {
+                    items.add(envs);
+                }
+
             } catch (InterruptedException ex) {
                 Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
             } catch (IOException ex) {
                 Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
             }
-            
-            
-            List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
-            
-            for (String envs : envsroles) {
-                items.add(envs);
-            }
-            
             
             return items;
             
@@ -414,9 +427,11 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             
             try {
                 workflowpath = LeroyBuilder.getLeroyhome()+"/workflows/";
-            } catch (InterruptedException ex) {
+            } 
+            catch (InterruptedException ex) {
                 Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IOException ex) {
+            } 
+            catch (IOException ex) {
                 Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
             }
             
@@ -430,7 +445,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                     if (file.isFile() && file.getName().contains(".xml")) {
                         results.add(file.getName().substring(0, file.getName().length()-4));
                     }
-                    if (file.isDirectory()) {
+                    if (file.isDirectory()&& !(file.isHidden()) && file.getName().charAt(0)=='.') {
                        
                         File[] files1 = new File(workflowpath).listFiles();
                         if(files.length > 0)
@@ -450,66 +465,137 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             }
             return items;
         }
-      
-    /**
+        public ListBoxModel doFillEnvrnItems() {
+            ListBoxModel listitems = new ListBoxModel();
+            List<String> items = new ArrayList<String>();
+            
+            String envspath = "";
+            
+            envspath = Hudson.getInstance().getRootDir()+"/plugins/leroy/temp1/environments.xml";          
+            List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
+
+            if(envsroles!=null){
+                for (String envs : envsroles) {
+                    items.add(envs);
+                    listitems.add(envs,envs);
+                }
+            }
+            environment = items;
+            return listitems;
+            
+        }
+        
+        public ListBoxModel doFillWorkflowItems() {
+            ListBoxModel listitems = new ListBoxModel();
+            List<String> items = new ArrayList<String>();
+            
+            String workflowpath = Hudson.getInstance().getRootDir()+"/plugins/leroy/temp1/workflows/";
+            
+            //get file names
+            List<String> results = new ArrayList<String>();
+            File[] files = new File(workflowpath).listFiles();
+            
+            
+            if(files!=null && files.length > 0)
+            {
+                for (File file : files) {
+                    if (file.isFile() && file.getName().contains(".xml")) {
+                        results.add(file.getName().substring(0, file.getName().length()-4));
+                    }
+                    if (file.isDirectory() && !(file.isHidden()) && file.getName().charAt(0)=='.') {
+                       
+                        File[] files1 = new File(workflowpath).listFiles();
+                        if(files.length > 0)
+                        {
+                            for (File file1 : files1) {
+                                if (file1.isFile() && file1.getName().contains(".xml")) {
+                                    results.add(file.getName()+"/"+file1.getName().substring(0, file1.getName().length()-4));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            for (String role : results) {
+                items.add(role);
+                listitems.add(role,role);
+            }
+            //listitems.addAll(items);
+            return listitems;
+        }
+        
+        /**
          * get workflow and environment from scm 
          * 
          * @return 
          */
-//        @JavaScriptMethod 
-//        public boolean getWo() 
-//                throws IOException, ServletException {
-//                 ByteArrayOutputStream output = new ByteArrayOutputStream();
-//               
-//            try {
-//                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-//                Writer writer = null;
-//
-//                SCM scm = this.getScm();
-//                
-//                //check what if file doesn't exists
-//                FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"));
-//                 boolean check = scm.checkout(new NewFreeStyleBuild(this), launcher, checkoutdir, null, null);
-//                
-//                try {
-//                    writer = new BufferedWriter(new OutputStreamWriter(
-//                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
-//                    if(launcher.isUnix())
-//                        writer.write("1\n"+agentname+"\n");
-//                       
-//                    else
-//                        writer.write("3\r\n"+agentname+"\r\n");
-//                } catch (IOException ex) {
-//                  return FormValidation.error("error creating file: "+ex.getMessage());
-//                } finally {
-//                   try {writer.close();} catch (Exception ex) {}
-//                }
-//              
-//                int returnCode = 0;
-//                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
-//                launcher.decorateByEnv(envs);
-//
-//                if(launcher.isUnix())
-//                {                
-//                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.sh", leroyhome, agentname).pwd(leroyhome).stdout(output).join();
-//                }
-//                else
-//                    returnCode = launcher.launch().envs(Functions.getEnvVars()).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.bat" , leroyhome, leroyhome+"/controller.exe" ).join();
-//                
-//                int returnCode1 = 0;
-//              
-//                if(check)
-//                {
-//                    return FormValidation.ok("Success");
-//                }
-//                
-//                return FormValidation.error("Failed to add agent" + output);
-//                 return check;
+        public boolean doWo() 
+        {                
+            try {
+                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+                Writer writer = null;
+
+                SCM scm = this.getScm();              
+                //check what if file doesn't exists
+                FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp1/"));
+               
+                String uuid = UUID.randomUUID().toString();
+                String uuid1 = UUID.randomUUID().toString();
                 
-//            } catch (Exception e) {
-//                return false;
-////                return FormValidation.error("Client error : "+e.getMessage());
-//            }
-//            
-//        }
+                
+                //check if temp folder exists
+                File tempfolder = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/");
+                
+                if(!tempfolder.exists())
+                {
+                    tempfolder.mkdir();                
+                }
+                
+                
+                File tempfile = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"+uuid1+".txt");
+                File tempfile1 = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"+uuid+".txt");
+                
+                String name = this.getName();
+                
+                StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile));         
+                boolean check=false;         
+                try
+                {
+                    
+                    check = scm.checkout(getLastBuild(), launcher,checkoutdir ,stream, tempfile1);
+                }
+                catch(IOException e)
+                {
+                    System.out.print(e.toString());
+                    e.printStackTrace();
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, e);
+
+                }
+                catch(InterruptedException e)
+                {
+                    System.out.print(e.toString());
+                    e.printStackTrace();
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, e);
+
+                }
+                catch(Exception e)
+                {
+                    System.out.printf(e.toString()); 
+                    e.printStackTrace();
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, e);
+
+                }      
+                doFillWorkflowItems();
+                doFillEnvrnItems();
+                        
+                return check;
+                
+            } 
+            catch (Exception e) {               
+                e.printStackTrace();
+                return false;
+            }
+            
+        }
 }

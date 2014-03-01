@@ -1,9 +1,9 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:local="local">
       <style type="text/css">
-         /* div[descriptorid="hudson.model.ChoiceParameterDefinition"]{
+          div[descriptorid="hudson.model.ChoiceParameterDefinition"]{
             visibility:hidden;
             display: none;
-          }*/
+          }
           input[name="parameterized"]{
              visibility:hidden;
              display: none;           

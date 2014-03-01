@@ -126,9 +126,7 @@
                       <artifactId>subversion</artifactId>
                   </exclusion>
               </exclusions>
-          </dependency>
-          
-    -->
+          </dependency>   -->
   </dependencies>
 
  <build>

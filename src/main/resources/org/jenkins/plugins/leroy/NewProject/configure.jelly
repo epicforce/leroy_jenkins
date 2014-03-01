@@ -1,13 +1,15 @@
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
   
-    <l:layout title="${it.displayName} Config" norefresh="true" >
+    <l:layout css="/plugin/leroy/changedlayout.css" title="${it.displayName} Config" norefresh="true" >
       
     <st:include page="sidepanel.jelly" />
     <f:breadcrumb-config-outline />
     <l:main-panel>
-         <st:include page="css1.jelly" />
-   
+      <st:include page="css1.jelly" />
+      
+      <script src="${rootURL}/plugin/leroy/myCustom.js" />
+      
       <div class="behavior-loading">${%LOADING}</div>
       <f:form method="post" action="configSubmit" name="config">
         <j:set var="descriptor" value="${it.descriptor}" />
