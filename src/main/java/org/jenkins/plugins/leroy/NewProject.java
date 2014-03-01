@@ -71,6 +71,7 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.Writer;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -343,12 +344,16 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             String tempp = ite.next();          
             tempworkflow = tempworkflow + tempp + "\\n";
         }
-        
         if(tempworkflow.length()>2)
             tempworkflow = tempworkflow.substring(0,tempworkflow.length()-2);
        
         String description ="";
-        ChoiceParameterDefinition test = new ChoiceParameterDefinition( worflow, choices,  description);
+        ChoiceParameterDefinition test=null;
+        if(choices.length>0)      
+              test  = new ChoiceParameterDefinition( worflow, choices,  description);
+        else
+            tempworkflow="None";
+        
         List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
         
         String env = "Environment";
@@ -359,6 +364,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
         choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
+        
         //choices to string
         ite = choiceslist.iterator();
         String tempenv ="";
@@ -367,15 +373,21 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             String tempp = ite.next();
             tempenv = tempenv + tempp + "\\n";
         }
-        
         if(tempenv.length()>2)
             tempenv = tempenv.substring(0,tempenv.length()-2);
        
         description ="";
-        ChoiceParameterDefinition test1 = new ChoiceParameterDefinition( env, choices,  description);
+        ChoiceParameterDefinition test1=null;
+        if(choices.length>0)
+            test1 = new ChoiceParameterDefinition( env, choices,  description);
+        else
+            tempenv="None";
+            
+        if(test!=null)
+            paramsl.add(test);
         
-        paramsl.add(test);
-        paramsl.add(test1);
+        if(test1!=null)
+            paramsl.add(test1);
         
         //this is a hack(need to figureout a better a way)(IMP!!!)
         String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
@@ -385,7 +397,8 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
         req.bindJSON(req,properties);
         
-        super.addProperty(new ParametersDefinitionProperty(paramsl));
+        if(!paramsl.isEmpty())
+            super.addProperty(new ParametersDefinitionProperty(paramsl));
         
         save();
         super.doConfigSubmit(req,rsp);
@@ -544,14 +557,30 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 String uuid1 = UUID.randomUUID().toString();
                 
                 
-                //check if temp folder exists
+                //check if temp folder exists and clean it
                 File tempfolder = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/");
-                
+                File tempfolder1 = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp1/");
+
                 if(!tempfolder.exists())
                 {
                     tempfolder.mkdir();                
                 }
+//                else
+//                {
+//                    tempfolder.delete();
+//                    tempfolder.mkdir();                
+//                }
                 
+                if(!tempfolder1.exists())
+                {
+                    
+                    tempfolder1.mkdir();                
+                }
+                else
+                {
+                    delete(tempfolder1);
+                    tempfolder1.mkdir();  
+                }
                 
                 File tempfile = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"+uuid1+".txt");
                 File tempfile1 = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"+uuid+".txt");
@@ -559,11 +588,12 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 String name = this.getName();
                 
                 StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile));         
-                boolean check=false;         
+                boolean check=false;   
+                
                 try
                 {
-                    
-                    check = scm.checkout(getLastBuild(), launcher,checkoutdir ,stream, tempfile1);
+                    AbstractBuild b = new NewFreeStyleBuild((NewFreeStyleProject) this, Calendar.getInstance());
+                    check = scm.checkout(b, launcher,checkoutdir ,stream, tempfile1);
                 }
                 catch(IOException e)
                 {
@@ -585,7 +615,8 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                     e.printStackTrace();
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, e);
 
-                }      
+                }
+                
                 doFillWorkflowItems();
                 doFillEnvrnItems();
                         
@@ -598,4 +629,43 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             }
             
         }
+        public static void delete(File file)
+    	throws IOException{
+ 
+    	if(file.isDirectory()){
+ 
+    		//directory is empty, then delete it
+    		if(file.list().length==0){
+ 
+    		   file.delete();
+    		   System.out.println("Directory is deleted : " 
+                                                 + file.getAbsolutePath());
+ 
+    		}else{
+ 
+    		   //list all the directory contents
+        	   String files[] = file.list();
+ 
+        	   for (String temp : files) {
+        	      //construct the file structure
+        	      File fileDelete = new File(file, temp);
+ 
+        	      //recursive delete
+        	     delete(fileDelete);
+        	   }
+ 
+        	   //check the directory again, if empty then delete it
+        	   if(file.list().length==0){
+           	     file.delete();
+        	     System.out.println("Directory is deleted : " 
+                                                  + file.getAbsolutePath());
+        	   }
+    		}
+ 
+    	}else{
+    		//if file, then delete it
+    		file.delete();
+    		System.out.println("File is deleted : " + file.getAbsolutePath());
+    	}
+    }
 }

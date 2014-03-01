@@ -30,6 +30,7 @@ import hudson.slaves.WorkspaceList.Lease;
 
 import java.io.IOException;
 import java.io.File;
+import java.util.Calendar;
 
 /**
  * @author Kohsuke Kawaguchi
@@ -41,6 +42,11 @@ public class NewFreeStyleBuild  extends NewBuild<NewFreeStyleProject,NewFreeStyl
 
     public NewFreeStyleBuild(NewFreeStyleProject project, File buildDir) throws IOException {
         super(project, buildDir);
+    }
+    
+    public NewFreeStyleBuild(NewFreeStyleProject project, Calendar calendar)
+    {
+        super(project, calendar);
     }
 
      @Override
