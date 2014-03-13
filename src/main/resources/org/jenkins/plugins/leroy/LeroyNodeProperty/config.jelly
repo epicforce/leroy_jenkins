@@ -10,7 +10,10 @@
         <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
           <f:textbox value="1337" />
         </f:entry>   
-    </f:block>       
+        <f:entry title="System Architecture" field="architecture" >
+            <f:select />                  
+        </f:entry>
+    </f:block>         
   </f:section>
 <!--  <f:section >
       <f:block>
@@ -75,4 +78,12 @@
          
     </f:block>    
   </f:section>-->
+  
+  <f:section title="Agent Upadte">
+            <f:advanced>
+               <f:validateButton
+                   title="${%Update Agent}" progress="${%Updating...}"
+                   method="updateAgent" with="architecture,leroyhome" />  
+            </f:advanced>
+        </f:section>   
 </j:jelly>  

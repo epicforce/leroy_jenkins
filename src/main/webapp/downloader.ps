@@ -1,0 +1,3 @@
+Set-ExecutionPolicy Unrestricted
+$client = new-object System.Net.WebClient
+$client.DownloadFile("$args[1]","$args[0]")

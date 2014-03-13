@@ -4,7 +4,7 @@
 jQuery(document).ready(function(){
   jQuery('input[name="_.target"]').attr("readonly","readonly");
   jQuery('input[name="_.target"]').attr("disabled","disabled");
-  jQuery('input[id="main-table"]').css({"background-image": "url(plugin/leroy/myCustom1.js)"});
+//  jQuery('input[id="main-table"]').css({"background-image": "url(plugin/leroy/myCustom1.js)"});
   
   
   //on load refresh the two select boxes rows
@@ -71,9 +71,6 @@ jQuery(document).ready(function(){
       });
   });
   
-  var temp = jQuery('tr[name="com-coravy-hudson-plugins-github-GithubProjectProperty"]').attr("id");
-    console.log(temp);
-    jQuery('tr[class="'+temp+'"]').css({"display":"none"});
 });
 
 
