@@ -8,7 +8,7 @@ jQuery(document).ready(function(){
   
   
   //on load refresh the two select boxes rows
-  jQuery("input[id='getWo']").click(function(){
+  //jQuery("input[id='getWo']").click(function(){
       var projectname = jQuery("input[name='_.projectname']").val();
       new Ajax.Request("/job/"+projectname+"/wo", {
           timeout: 10000,
@@ -69,7 +69,7 @@ jQuery(document).ready(function(){
                 });
             }
       });
-  });
+ // });
   
 });
 

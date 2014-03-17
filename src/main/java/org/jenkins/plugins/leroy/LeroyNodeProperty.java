@@ -396,7 +396,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                     {
                         String templeroyhome = leroyhome;
                         if(leroyhome.charAt(leroyhome.length()-1)=='/' ||leroyhome.charAt(leroyhome.length()-1)=='\\')
-                            templeroyhome = leroyhome.substring(0, leroyhome.length()-2);
+                            templeroyhome = leroyhome.substring(0, leroyhome.length()-1);
+                        
                         returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/updateleroy.bat", templeroyhome ).pwd(Hudson.getInstance().getRootDir() + "/plugins/leroy/").stdout(output).join();       
                     }
                 }
@@ -528,7 +529,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
-            
+           
             save();
             return super.configure(req,formData);
         }

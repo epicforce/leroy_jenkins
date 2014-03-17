@@ -82,8 +82,12 @@ public class LeroyConfigurationBuilder extends Builder {
         }
         else
         { 
-                returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/configuration.bat", leroyhome, projectRoot.toURI().getPath()).pwd(projectRoot).stdout(output).join();
-                listener.getLogger().println(output.toString().trim());
+            String templeroyhome = leroyhome;
+            if(leroyhome.charAt(leroyhome.length()-1)=='/' ||leroyhome.charAt(leroyhome.length()-1)=='\\')
+                templeroyhome = leroyhome.substring(0, leroyhome.length()-1);    
+            
+            returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/configuration.bat", templeroyhome, projectRoot.toURI().getPath()).pwd(projectRoot).stdout(output).join();
+            listener.getLogger().println(output.toString().trim());
         }    
           
         return returnCode==0;

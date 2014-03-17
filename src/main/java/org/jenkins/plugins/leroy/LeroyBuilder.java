@@ -13,6 +13,8 @@ import hudson.model.Computer;
 import hudson.model.Hudson;
 import hudson.model.JobPropertyDescriptor;
 import hudson.model.TaskListener;
+import hudson.plugins.copyartifact.CopyArtifact;
+import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.tasks.Builder;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.util.ListBoxModel;
@@ -58,16 +60,20 @@ public class LeroyBuilder extends Builder {
     
     private String projectname;
     
-    private static List<String> envrnlist;
+    private String checkoutstrategy;
     
-    private static List<String> workflowlist;
+    private List<String> envrnlist;
+    
+    private List<String> workflowlist;
     
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
-    public LeroyBuilder(String leroyhome, String envrn, String workflow, String projectname) {
+    public LeroyBuilder(String leroyhome, String envrn, String workflow, String projectname, String checkoutstrategy) {
         this.envrn = envrn;
         this.workflow = workflow;
         this.projectname = projectname;
+        this.checkoutstrategy = checkoutstrategy;
+        
     }
 
     
@@ -98,6 +104,9 @@ public class LeroyBuilder extends Builder {
         return workflow;
     }
    
+    public String getCheckoutstrategy() {
+        return checkoutstrategy;
+    }
     /**
      * Get Environment
      * @return 
@@ -111,7 +120,7 @@ public class LeroyBuilder extends Builder {
     }
    
     @Override
-    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+    public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException, OutOfMemoryError {
         List<JobPropertyDescriptor> jobPropertyDescriptors = Functions.getJobPropertyDescriptors(NewProject.class);
         EnvVars envs = build.getEnvironment(listener);
         FilePath projectRoot = build.getWorkspace();
@@ -128,72 +137,145 @@ public class LeroyBuilder extends Builder {
      
         if(launcher.isUnix())
         {   
-            returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", leroypath).stdout(output).pwd(projectRoot).join();
+            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.sh", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
             listener.getLogger().println(output.toString().trim());
-            
-            if(returnCode==0)
-            {
-                returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
-                listener.getLogger().println(output.toString().trim());
+            if(getCheckoutstrategy()=="scm") {
+                if(returnCode==0){
+                    returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", leroypath).stdout(output).pwd(projectRoot).join();
+                    listener.getLogger().println(output.toString().trim());
+
+                    if(returnCode==0){
+                        returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
+                        listener.getLogger().println(output.toString().trim());
+                    }
+                }
             }
+            else{
+                CopyArtifact copyartifact = null;
+                String workspacepath = projectRoot.toURI().getPath()+"/temp_artifacts";
+                   
+                try {
+                    String leroybuilderpath = LeroyBuilder.getLeroyhome();
+                     
+                    File tempfolder = new File(workspacepath);
+
+                    if(!tempfolder.exists()){
+                         tempfolder.mkdir();                
+                    }
+                    else{
+                        delete(tempfolder);
+                        tempfolder.mkdir();  
+                    }
+                 
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
+                
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException ex) {
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                
+                copyartifact.perform(build, launcher, listener);
+                returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",workspacepath, leroypath).stdout(output).pwd(projectRoot).join();
+                listener.getLogger().println(output.toString().trim());
+                
+                if(returnCode==0){
+                    returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
+                    listener.getLogger().println(output.toString().trim());
+                }
+            }            
         }
         else
         { 
-            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", "." ,leroypath, workflow, envrn).stdout(output).pwd(projectRoot).join();
+            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.bat", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
             listener.getLogger().println(output.toString().trim());
-        
             
-//            if(returnCode==0)
-//            {
-//                returnCode = launcher.launch().envs(envs).cmds("controller.exe","--workflow", this.workflow,"--environment", this.envrn).stdout(listener.getLogger()).pwd(leroypath).join();
-//                listener.getLogger().println(output.toString().trim());
-//            }
+            if(getCheckoutstrategy()=="scm") {
+                 if(returnCode==0){
+                    returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", ".", workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
+                    listener.getLogger().println(output.toString().trim());
+                }
+            }
+            else {
+                CopyArtifact copyartifact = null;
+                String workspacepath = projectRoot.toURI().getPath().substring(1)+"/temp_artifacts";
+                   
+                try {
+                    String leroybuilderpath = LeroyBuilder.getLeroyhome();
+                     
+                    File tempfolder = new File(workspacepath);
+
+                    if(!tempfolder.exists()){
+                         tempfolder.mkdir();                
+                    }
+                    else{
+                        delete(tempfolder);
+                        tempfolder.mkdir();  
+                    }
+                 
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
+                
+                } catch (InterruptedException ex) {
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+                } catch (IOException ex) {
+                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+                }
+                
+                copyartifact.perform(build, launcher, listener);
+                
+                try{
+                //perform deploy
+                    returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", workspacepath, workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
+                    listener.getLogger().println(output.toString().trim());
+                }catch(OutOfMemoryError e){
+                    throw e;
+                }
+                
+                
+            }
         }
-//        if(returnCode==0)
-//        {
-//            listener.getLogger().println("Building Artifacts");         
-//            Date currenttime = new Date();
-//            String build_number = envs.get("BUILD_NUMBER");
-//            String date = "";
-//            String month = "";
-//            
-//            if(currenttime.getDate() < 10)
-//            {
-//                date = "0" + currenttime.getDate();
-//            }
-//            else
-//            {
-//                date = ""+currenttime.getDate();
-//            }
-//            if(currenttime.getMonth()< 10)
-//            {
-//                month = "0" + currenttime.getMonth();
-//            }
-//            else
-//            {
-//                month = ""+currenttime.getMonth();
-//            }
-//            
-//            String zipFile = projectRoot.toString()+"\\zip\\" + build_number + "_" + workflow + "_" + envrn+ "_"
-//                    + date +month+currenttime.getYear()+" "+currenttime.getHours()+
-//                    "_"+currenttime.getMinutes()+"_"+currenttime.getSeconds()+".zip";
-//		
-//		String srcDir = projectRoot.toString();
-//		     projectRoot.zip(new FilePath(new File(zipFile)));
-//
-//            listener.getLogger().println("Copying Artifacts");         
-//            
-//            returnCode = launcher.launch().envs(envs).cmds("xcopy" ,".\\zip", leroypath+"\\artifacts", "/E", "/R" ,"/Y").stdout(output).pwd(projectRoot).join();
-//            listener.getLogger().println(output.toString().trim());
-//            
-//            
-//                    
-//            //returnCode = launcher.launch().envs(envs).cmds(leroypath+"/controller.exe","--workflow", workflow,"--environment", envrn).stdout(listener.getLogger()).pwd(leroypath).join();
-//        }
-        
+      
         return returnCode==0;
     }
-
+    public static void delete(File file)
+    	throws IOException{
+ 
+    	if(file.isDirectory()){
+ 
+    		//directory is empty, then delete it
+    		if(file.list().length==0){
+ 
+    		   file.delete();
+    		   System.out.println("Directory is deleted : " 
+                                                 + file.getAbsolutePath());
+ 
+    		}else{
+ 
+    		   //list all the directory contents
+        	   String files[] = file.list();
+ 
+        	   for (String temp : files) {
+        	      //construct the file structure
+        	      File fileDelete = new File(file, temp);
+ 
+        	      //recursive delete
+        	     delete(fileDelete);
+        	   }
+ 
+        	   //check the directory again, if empty then delete it
+        	   if(file.list().length==0){
+           	     file.delete();
+        	     System.out.println("Directory is deleted : " 
+                                                  + file.getAbsolutePath());
+        	   }
+    		}
+ 
+    	}else{
+    		//if file, then delete it
+    		file.delete();
+    		System.out.println("File is deleted : " + file.getAbsolutePath());
+    	}
+    }
     @Override
     public DescriptorImpl getDescriptor() {
         return (DescriptorImpl)super.getDescriptor();
@@ -291,6 +373,15 @@ public class LeroyBuilder extends Builder {
             
         }
         
+        public ListBoxModel doFillCheckoutstrategyItems(){
+            ListBoxModel items = new ListBoxModel();
+            
+            items.add("SCM", "scm");
+            items.add("Last Build", "lastbuild");
+            
+            return items;
+        }
+        
         public ListBoxModel doFillWorkflowItems() {
             ListBoxModel items = new ListBoxModel();
             
@@ -350,7 +441,7 @@ public class LeroyBuilder extends Builder {
         
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
-            save();
+            save();            
             return super.configure(req,formData);
         }
 

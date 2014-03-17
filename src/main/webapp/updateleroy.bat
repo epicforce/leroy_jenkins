@@ -13,4 +13,4 @@ echo "Kill Task"
 TASKKILL /IM controller.exe /F > K
 
 echo "Copying configuration to leroy home"
-XCOPY /E /R /Y /Q "%CURRENTDIR%\Win64\" "%1\" 
+XCOPY /E /R /Y /Q /S /I "%CURRENTDIR%\Win64" "%1" 

@@ -49,6 +49,7 @@ import hudson.model.TaskListener;
 import hudson.plugins.copyartifact.CopyArtifact;
 import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.scm.SCM;
+import hudson.tasks.ArtifactArchiver;
 import hudson.tasks.BuildStep;
 import hudson.tasks.BuildWrapper;
 import hudson.tasks.BuildWrappers;
@@ -140,7 +141,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
     }
 
     public List<Builder> getBuilders() {
-        LeroyBuilder  a = new LeroyBuilder("","","",this.getName());
+        LeroyBuilder  a = new LeroyBuilder("","","",this.getName(),"scm");
         
         CopyArtifact copyartifact = null;
         try {
@@ -205,6 +206,26 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         if (publishers == null) {
             publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
         }
+        
+        ArtifactArchiver artifactArchiver = new ArtifactArchiver("./temp_artifacts/**","",false);
+//        List<Publisher> temp =  getPublishersList().toList();
+        ListIterator<Publisher> ite = publishers.listIterator();
+        boolean check = false;
+  
+        while(ite.hasNext())
+        {
+            Publisher ele = ite.next();
+            
+            
+            if(ele instanceof ArtifactArchiver)
+                check = true;
+
+            
+        }
+        
+        if(!check)
+            publishers.add((Publisher)artifactArchiver);
+        
         return publishers;
     }
 

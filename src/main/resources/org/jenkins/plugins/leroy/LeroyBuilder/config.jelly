@@ -18,11 +18,16 @@
         <f:invisibleEntry >
             <f:textbox title="Project Name" field="projectname" />
         </f:invisibleEntry>
-        <f:entry>
+<!--        <f:entry>
             <div align="right">
                 <input type="button" id="getWo" value="Get Workflow and Enviroment" /> 
             </div>
-        </f:entry>
+        </f:entry>-->
+        <f:entry title="CheckOut Strategy" field="checkoutstrategy">
+            <f:select />         
+        </f:entry>    
+        
+        
 <!--   <f:entry title="Environt" field="parameters1">
             <select name="parameters1">
               
