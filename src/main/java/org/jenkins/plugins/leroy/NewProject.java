@@ -209,7 +209,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
         }
         
-        ArtifactArchiver artifactArchiver = new ArtifactArchiver("./temp_artifacts/**","",false);
+        ArtifactArchiver artifactArchiver = new ArtifactArchiver("**","",false);
 //        List<Publisher> temp =  getPublishersList().toList();
         ListIterator<Publisher> ite = publishers.listIterator();
         boolean check = false;
@@ -413,12 +413,26 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             paramsl.add(test1);
         
         //this is a hack(need to figureout a better a way)(IMP!!!)
-        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
+        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"CheckoutStrategy\",\"choices\":\"scm\\nlastbuild\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
        
         //Gson gson = new Gson();
         properties.put("hudson-model-ParametersDefinitionProperty",JSONObject.fromObject(parameterkey));
         
         req.bindJSON(req,properties);
+        
+        
+        //add scm parameter
+        String checkstrategy = "CheckOut Strategy";
+        choiceslist = new ArrayList<String>();
+        //if(environment!=null)
+            choiceslist.add("scm");
+        //else
+            choiceslist.add("lastbuild");
+        
+        choices = new String[choiceslist.size()];
+        choiceslist.toArray(choices);
+        
+        paramsl.add(new ChoiceParameterDefinition( checkstrategy, choices,  description));
         
         if(!paramsl.isEmpty())
             super.addProperty(new ParametersDefinitionProperty(paramsl));

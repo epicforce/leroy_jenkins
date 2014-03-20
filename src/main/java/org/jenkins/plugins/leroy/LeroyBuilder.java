@@ -129,7 +129,7 @@ public class LeroyBuilder extends Builder {
         String leroypath = envs.expand(this.getLeroyhome());
         String envrn = envs.get("Environment");
         String workflow = envs.get("Workflow");
-        
+        String checkoutstrategy = envs.get("CheckoutStrategy");
         
         listener.getLogger().println("LEROY_HOME: " + leroypath);
         
@@ -142,17 +142,17 @@ public class LeroyBuilder extends Builder {
             //int returnCode1 = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.sh", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
             //listener.getLogger().println(output.toString().trim());
             
-            if(getCheckoutstrategy().equalsIgnoreCase("scm")) {
+            if(checkoutstrategy.equalsIgnoreCase("scm")) {
                 if(returnCode==0){
                     
                     returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
             
-                    if(returnCode==0){
-                        returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", workspacepath).stdout(output).pwd(projectRoot).join();
-                        listener.getLogger().println(output.toString().trim());
-                    }
-                    
+//                    if(returnCode==0){
+//                        returnCode = launcher.launch().envs(envs).cmds("rsync" ,"-rv","--exclude=temp_artifacts",".", "temp_artifacts/").stdout(output).pwd(projectRoot).join();
+//                        listener.getLogger().println(output.toString().trim());
+//                    }
+//                    
                     if(returnCode==0){
                         returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
                         listener.getLogger().println(output.toString().trim());
@@ -177,7 +177,7 @@ public class LeroyBuilder extends Builder {
                         tempfolder.mkdir();  
                     }
                  
-                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", projectRoot.toURI().getPath(),false, false, true);
                 
                 } catch (InterruptedException ex) {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
@@ -198,7 +198,7 @@ public class LeroyBuilder extends Builder {
         }
         else
         {         
-            if(getCheckoutstrategy().equalsIgnoreCase("scm")) {
+            if(checkoutstrategy.equalsIgnoreCase("scm")) {
                 
                     returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", ".", workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
@@ -221,7 +221,7 @@ public class LeroyBuilder extends Builder {
                         tempfolder.mkdir();  
                     }
                  
-                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "",projectRoot.toURI().getPath().substring(1, projectRoot.toURI().getPath().length()-1) ,false, false, true);
                 
                 } catch (InterruptedException ex) {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
@@ -233,7 +233,7 @@ public class LeroyBuilder extends Builder {
                 
                 try{
                 //perform deploy
-                    returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", workspacepath, workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
+                    returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", projectRoot.toURI().getPath().substring(1, projectRoot.toURI().getPath().length()-1), workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
                 }catch(OutOfMemoryError e){
                     throw e;
