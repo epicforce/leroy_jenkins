@@ -24,6 +24,7 @@
  */
 package org.jenkins.plugins.leroy;
 
+import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Util;
@@ -33,6 +34,7 @@ import hudson.model.Action;
 import hudson.model.BuildListener;
 import hudson.model.BuildableItemWithBuildWrappers;
 import hudson.model.ChoiceParameterDefinition;
+import hudson.model.Computer;
 import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
@@ -423,7 +425,29 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         
         save();
         super.doConfigSubmit(req,rsp);
-    
+        
+        //set node
+        Jenkins jenkins = Jenkins.getInstance();
+        Computer[] computers = jenkins.getComputers();
+
+        for(int i = 0; i < computers.length; i++)
+        {
+            EnvVars envs = null; 
+            try {
+                envs = computers[i].buildEnvironment(TaskListener.NULL);
+                String name = computers[i].getName();
+                if(envs.containsKey("IS_LEROY_NODE"))
+                {    
+                    setAssignedNode(computers[i].getNode());
+                }            
+
+            } catch (InterruptedException ex) {
+                Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            
+
+        }
 
         // notify the queue as the project might be now tied to different node
         Jenkins.getInstance().getQueue().scheduleMaintenance();
@@ -556,6 +580,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 listitems.add(role,role);
             }
             //listitems.addAll(items);
+            workflow = items;
             return listitems;
         }
         

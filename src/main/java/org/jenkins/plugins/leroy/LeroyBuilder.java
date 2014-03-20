@@ -133,27 +133,37 @@ public class LeroyBuilder extends Builder {
         
         listener.getLogger().println("LEROY_HOME: " + leroypath);
         
-        int returnCode;
+        int returnCode = 0;
      
         if(launcher.isUnix())
         {   
-            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.sh", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
-            listener.getLogger().println(output.toString().trim());
-            if(getCheckoutstrategy()=="scm") {
+             String workspacepath = projectRoot.toURI().getPath()+"/temp_artifacts";
+                        
+            //int returnCode1 = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.sh", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
+            //listener.getLogger().println(output.toString().trim());
+            
+            if(getCheckoutstrategy().equalsIgnoreCase("scm")) {
                 if(returnCode==0){
+                    
                     returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
-
+            
+                    if(returnCode==0){
+                        returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",".", workspacepath).stdout(output).pwd(projectRoot).join();
+                        listener.getLogger().println(output.toString().trim());
+                    }
+                    
                     if(returnCode==0){
                         returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
                         listener.getLogger().println(output.toString().trim());
+                    
                     }
+                    
                 }
             }
             else{
                 CopyArtifact copyartifact = null;
-                String workspacepath = projectRoot.toURI().getPath()+"/temp_artifacts";
-                   
+                  
                 try {
                     String leroybuilderpath = LeroyBuilder.getLeroyhome();
                      
@@ -175,10 +185,11 @@ public class LeroyBuilder extends Builder {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 
-                copyartifact.perform(build, launcher, listener);
-                returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",workspacepath, leroypath).stdout(output).pwd(projectRoot).join();
-                listener.getLogger().println(output.toString().trim());
-                
+                boolean copyartifactcheck = copyartifact.perform(build, launcher, listener);
+                if(copyartifactcheck){
+                    returnCode = launcher.launch().envs(envs).cmds("cp" ,"-fR",workspacepath, leroypath).stdout(output).pwd(projectRoot).join();
+                    listener.getLogger().println(output.toString().trim());
+                }
                 if(returnCode==0){
                     returnCode = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.sh", leroypath ,workflow, envrn).stdout(listener.getLogger()).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
@@ -186,15 +197,12 @@ public class LeroyBuilder extends Builder {
             }            
         }
         else
-        { 
-            returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.bat", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
-            listener.getLogger().println(output.toString().trim());
-            
-            if(getCheckoutstrategy()=="scm") {
-                 if(returnCode==0){
+        {         
+            if(getCheckoutstrategy().equalsIgnoreCase("scm")) {
+                
                     returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", ".", workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
-                }
+                
             }
             else {
                 CopyArtifact copyartifact = null;

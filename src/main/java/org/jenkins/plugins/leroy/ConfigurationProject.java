@@ -24,6 +24,7 @@
  */
 package org.jenkins.plugins.leroy;
 
+import hudson.EnvVars;
 import hudson.Functions;
 import hudson.Util;
 import hudson.model.AbstractItem;
@@ -31,6 +32,7 @@ import hudson.model.AbstractProject;
 import hudson.model.Action;
 import hudson.model.BuildableItemWithBuildWrappers;
 import hudson.model.ChoiceParameterDefinition;
+import hudson.model.Computer;
 import hudson.model.DependencyGraph;
 import hudson.model.Descriptor;
 import hudson.model.Descriptor.FormException;
@@ -43,6 +45,7 @@ import hudson.model.ParametersDefinitionProperty;
 import hudson.model.ResourceActivity;
 import hudson.model.SCMedItem;
 import hudson.model.Saveable;
+import hudson.model.TaskListener;
 import hudson.model.TopLevelItem;
 import hudson.tasks.ArtifactArchiver;
 import hudson.tasks.BuildStep;
@@ -64,11 +67,15 @@ import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import jenkins.model.Jenkins;
 
 /**
  * Buildable software project.
@@ -273,6 +280,41 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
         getPublishersList().rebuildHetero(req, json, Publisher.all(), "publisher");
     }
 
+    @Override
+    public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
+        
+        save();
+        super.doConfigSubmit(req,rsp);
+        
+        //set node
+        Jenkins jenkins = Jenkins.getInstance();
+        Computer[] computers = jenkins.getComputers();
+
+        for(int i = 0; i < computers.length; i++)
+        {
+            EnvVars envs = null; 
+            try {
+                envs = computers[i].buildEnvironment(TaskListener.NULL);
+                String name = computers[i].getName();
+                if(envs.containsKey("IS_LEROY_NODE"))
+                {    
+                    setAssignedNode(computers[i].getNode());
+                }            
+
+            } catch (InterruptedException ex) {
+                Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+            
+
+        }
+
+        // notify the queue as the project might be now tied to different node
+        Jenkins.getInstance().getQueue().scheduleMaintenance();
+        // this is to reflect the upstream build adjustments done above
+        Jenkins.getInstance().rebuildDependencyGraphAsync();
+    }
+    
     @Override
     protected List<Action> createTransientActions() {
         List<Action> r = super.createTransientActions();
