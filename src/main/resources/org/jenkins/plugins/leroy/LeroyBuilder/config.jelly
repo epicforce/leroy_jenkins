@@ -12,21 +12,36 @@
         <f:entry title="Workflow" field="workflow">
             <f:select />         
         </f:entry>    
-        <f:entry title="Environment" field="envrn">
+<!--        <f:entry title="Environment" field="envrn">
             <f:select />
-        </f:entry>
+        </f:entry>-->
         <f:invisibleEntry >
             <f:textbox title="Project Name" field="projectname" />
         </f:invisibleEntry>
-<!--        <f:entry>
+<!--    <f:entry>
             <div align="right">
                 <input type="button" id="getWo" value="Get Workflow and Enviroment" /> 
             </div>
         </f:entry>-->
-        <f:entry title="CheckOut Strategy" field="checkoutstrategy">
+<!--        <f:entry title="CheckOut Strategy" field="checkoutstrategy">
             <f:select />         
-        </f:entry>    
+        </f:entry>    -->
         
+        <td colspan="3">
+            <div name="envtablediv">
+                <table name="envtable" style="margin-left:25px;">
+                    <tr class="envtableheader">
+                        <td style="width:115px;">
+                           Enviroment
+                        </td>
+                        <td>
+                           Use last config
+                        </td>
+                    </tr>
+                    
+                </table>
+            </div>
+        </td>
         
 <!--   <f:entry title="Environt" field="parameters1">
             <select name="parameters1">

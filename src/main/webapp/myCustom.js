@@ -2,6 +2,24 @@
  * template to update select box dynamically after sucessfull update of LEROY_HOME
  */
 jQuery(document).ready(function(){
+    jQuery("input[name='org-jenkins-plugins-leroy-LeroyNodeProperty']").live("click", function(){ 
+        if(jQuery("input[name='org-jenkins-plugins-leroy-LeroyNodeProperty']").attr("checked")) 
+        new Ajax.Request("/plugin/leroy/leroyNodeCheck", {
+                timeout: 10000,
+                method: 'post',
+                onSuccess: function(rsp) {
+                    console.log(rsp);
+                     var opts = eval('('+rsp.responseText+')').values;
+                    for( var i=0; i<opts.length; i++ ) {
+                        if(opts[i].value=="true")
+                        {
+                              alert("There is already a leroy node");
+                              jQuery("input[name='org-jenkins-plugins-leroy-LeroyNodeProperty']").attr("checked", false);
+                        }
+                    }
+                }
+                });
+    });
     
     //on load refresh the two select boxes rows
     new Ajax.Request(jQuery("select[name='_.environment']").attr("fillurl"), {

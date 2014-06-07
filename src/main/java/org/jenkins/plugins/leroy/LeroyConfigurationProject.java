@@ -34,7 +34,8 @@ public class LeroyConfigurationProject extends ConfigurationProject<LeroyConfigu
     public LeroyConfigurationProject(ItemGroup parent, String name) throws IOException {
           super(parent, name);
     }
-   @Override
+    
+    @Override
     protected Class<LeroyConfigurationBuild> getBuildClass() {
         return LeroyConfigurationBuild.class;
     }

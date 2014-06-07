@@ -38,7 +38,7 @@ public class LeroyConfigurationBuild  extends ConfigurationBuild<LeroyConfigurat
         super(project, buildDir);
     }
 
-     @Override
+    @Override
     public void run() {
         execute(new BuildExecution());
     }

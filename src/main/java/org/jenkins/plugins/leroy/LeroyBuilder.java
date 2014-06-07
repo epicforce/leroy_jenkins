@@ -36,6 +36,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.ZipEntry;
@@ -65,6 +66,7 @@ public class LeroyBuilder extends Builder {
     private List<String> envrnlist;
     
     private List<String> workflowlist;
+    
     
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
@@ -126,10 +128,18 @@ public class LeroyBuilder extends Builder {
         FilePath projectRoot = build.getWorkspace();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         
+        String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+build.getProject().getName()+".xml";
+        File configfile = new File(configfilename);
+        
+        
         String leroypath = envs.expand(this.getLeroyhome());
         String envrn = envs.get("Environment");
         String workflow = envs.get("Workflow");
-        String checkoutstrategy = envs.get("CheckoutStrategy");
+           
+        String checkoutstrategy = XMLParser.getConfigurationElement(configfile, envrn);
+        
+        if(checkoutstrategy==null)
+            checkoutstrategy="scm";
         
         listener.getLogger().println("LEROY_HOME: " + leroypath);
         
@@ -137,7 +147,7 @@ public class LeroyBuilder extends Builder {
      
         if(launcher.isUnix())
         {   
-             String workspacepath = projectRoot.toURI().getPath()+"/temp_artifacts";
+             String workspacepath = projectRoot.toURI().getPath()+"/";
                         
             //int returnCode1 = launcher.launch().envs(envs).cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/preflightcheck.sh", leroypath , workflow, envrn).stdout(output).pwd(projectRoot).join();
             //listener.getLogger().println(output.toString().trim());
@@ -164,20 +174,22 @@ public class LeroyBuilder extends Builder {
             else{
                 CopyArtifact copyartifact = null;
                   
-                try {
-                    String leroybuilderpath = LeroyBuilder.getLeroyhome();
-                     
-                    File tempfolder = new File(workspacepath);
+                try { 
+                    //File tempfolder = new File(workspacepath);
 
-                    if(!tempfolder.exists()){
-                         tempfolder.mkdir();                
-                    }
-                    else{
-                        delete(tempfolder);
-                        tempfolder.mkdir();  
-                    }
+                    //if(!tempfolder.exists()){
+                    //     tempfolder.mkdir();                
+                    //}
+                    //else{
+                    //    delete(tempfolder);
+                    //    tempfolder.mkdir();  
+                    //}
                  
-                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", projectRoot.toURI().getPath(),false, false, true);
+                    //remove contents of directory
+                    returnCode = launcher.launch().envs(envs).cmds("rm" ,"-fR", workspacepath+"*", leroypath).stdout(output).pwd(projectRoot).join();
+               
+                    //copy the contents from last successful archive
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
                 
                 } catch (InterruptedException ex) {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
@@ -209,7 +221,6 @@ public class LeroyBuilder extends Builder {
                 String workspacepath = projectRoot.toURI().getPath().substring(1)+"/temp_artifacts";
                    
                 try {
-                    String leroybuilderpath = LeroyBuilder.getLeroyhome();
                      
                     File tempfolder = new File(workspacepath);
 
@@ -221,30 +232,27 @@ public class LeroyBuilder extends Builder {
                         tempfolder.mkdir();  
                     }
                  
-                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "",projectRoot.toURI().getPath().substring(1, projectRoot.toURI().getPath().length()-1) ,false, false, true);
-                
-                } catch (InterruptedException ex) {
-                    Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "",workspacepath ,false, false, true);                
                 } catch (IOException ex) {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 
-                copyartifact.perform(build, launcher, listener);
-                
+                copyartifact.perform(build, launcher, listener);                
                 try{
-                //perform deploy
+                    //perform deploy
                     returnCode = launcher.launch().envs(envs).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/deploy.bat", projectRoot.toURI().getPath().substring(1, projectRoot.toURI().getPath().length()-1), workflow, envrn, leroypath).stdout(output).pwd(projectRoot).join();
                     listener.getLogger().println(output.toString().trim());
                 }catch(OutOfMemoryError e){
                     throw e;
                 }
-                
-                
             }
         }
       
         return returnCode==0;
     }
+    
+    
+    
     public static void delete(File file)
     	throws IOException{
  

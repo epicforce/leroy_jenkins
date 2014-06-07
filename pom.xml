@@ -34,10 +34,11 @@
     <version>1.531</version><!-- which version of Jenkins is this plugin built against? -->
   </parent>
 
+  
+  <!--<groupId>com.coravy.hudson.plugins.github</groupId>-->  
   <artifactId>leroy</artifactId>
   <version>0.1-SNAPSHOT</version>
   <packaging>hpi</packaging>
-
   <name>Leroy Plugin</name>
 
   <licenses>
@@ -56,7 +57,7 @@
     </developer>
   </developers>
 
-   <properties>
+  <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <powermock.version>1.4.8</powermock.version>
   </properties>
@@ -80,7 +81,7 @@
     </pluginRepository>
   </pluginRepositories>
 
-  <distributionManagement>
+<!--  <distributionManagement>
     <repository>
       <id>java.net-m2-repository</id>
       <url>http://maven.jenkins-ci.org/content/repositories/releases/</url>
@@ -89,7 +90,7 @@
       <id>github-project-site</id>
       <url>gitsite:git@github.com/jenkinsci/jprt-plugin</url>
     </site>
-  </distributionManagement>
+  </distributionManagement>-->
 
   <dependencies>
     <dependency>
@@ -103,48 +104,48 @@
         <version>1.0.2</version>
     </dependency>
     <dependency>
-            <groupId>org.jenkins-ci.plugins</groupId>
-            <artifactId>copyartifact</artifactId>
-            <version>1.30</version>
+        <groupId>org.jenkins-ci.plugins</groupId>
+        <artifactId>copyartifact</artifactId>
+        <version>1.30</version>
     </dependency>
     <!--  Gson: Java to Json conversion -->
-    <dependency>
+<!--    <dependency>
       <groupId>com.google.code.gson</groupId>
       <artifactId>gson</artifactId>
       <version>2.2.2</version>
       <scope>compile</scope>
-    </dependency>
+    </dependency>-->
 
-<!--    <dependency>
-              <groupId>org.jenkins-ci.main</groupId>
-              <artifactId>maven-plugin</artifactId>
-              <version>${project.parent.version}</version>
-              <exclusions>
-                  <exclusion>
-                       Conflicts with org.jenkins-ci.plugins:subversion dependency 
-                      <groupId>org.jvnet.hudson.plugins</groupId>
-                      <artifactId>subversion</artifactId>
-                  </exclusion>
-              </exclusions>
-          </dependency>   -->
+   <dependency>
+        <groupId>org.jenkins-ci.main</groupId>
+        <artifactId>maven-plugin</artifactId>
+        <version>${project.parent.version}</version>
+        <exclusions>
+            <exclusion>
+                 <!--Conflicts with org.jenkins-ci.plugins:subversion dependency--> 
+                <groupId>org.jvnet.hudson.plugins</groupId>
+                <artifactId>subversion</artifactId>
+            </exclusion>
+        </exclusions>
+   </dependency>   
   </dependencies>
 
  <build>
+   
      <pluginManagement>
 	<plugins>
            
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
-                    <!-- Needed to avoid some permgen space errors during test execution ... -->
+                     <!--Needed to avoid some permgen space errors during test execution ...--> 
                     <argLine>-XX:MaxPermSize=128m</argLine>
                 </configuration>
             </plugin>
-            
-		</plugins>
-	</pluginManagement>
+        </plugins>
+     </pluginManagement>
     <plugins>
-      <plugin>
+<!--      <plugin>
         <groupId>org.jenkins-ci.tools</groupId>
         <artifactId>maven-hpi-plugin</artifactId>
         <version>1.76</version>
@@ -152,7 +153,7 @@
           <dependencyResolution>compile</dependencyResolution>
         </configuration>
        
-      </plugin>
+      </plugin>-->
       <plugin>
           <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>copyartifact</artifactId>
@@ -168,9 +169,10 @@
               <version>${project.parent.version}</version>
               <exclusions>
                   <exclusion>
-                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                       <!--Conflicts with org.jenkins-ci.plugins:subversion dependency--> 
                       <groupId>org.jvnet.hudson.plugins</groupId>
                       <artifactId>subversion</artifactId>
+                      
                   </exclusion>
               </exclusions>
           </dependency>
@@ -180,13 +182,13 @@
               <version>${project.parent.version}</version>
               <exclusions>
                   <exclusion>
-                      <!-- Conflicts with org.jenkins-ci.plugins:subversion dependency -->
+                       <!--Conflicts with org.jenkins-ci.plugins:subversion dependency--> 
                       <groupId>org.jvnet.hudson.plugins</groupId>
                       <artifactId>subversion</artifactId>
                   </exclusion>
               </exclusions>
           </dependency>
-          <dependency>
+        <dependency>
             <groupId>org.jenkins-ci.plugins</groupId>
             <artifactId>copyartifact</artifactId>
             <version>1.30</version>
@@ -271,5 +273,4 @@
       </plugin>
     </plugins>
   </reporting>
-
 </project>

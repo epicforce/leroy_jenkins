@@ -73,6 +73,7 @@ import org.kohsuke.stapler.StaplerResponse;
 import javax.servlet.ServletException;
 import java.io.IOException;
 import java.io.Writer;
+import java.nio.file.FileAlreadyExistsException;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -87,6 +88,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import org.jenkins.plugins.leroy.util.XMLParser;
+import org.kohsuke.stapler.QueryParameter;
 
 /**
  * Buildable software project.
@@ -122,6 +124,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
     
     private List<String> environment;
     
+    private Map<String, String> envrnStratergyMap;
     /**
      * Creates a new project.
      */
@@ -413,29 +416,10 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             paramsl.add(test1);
         
         //this is a hack(need to figureout a better a way)(IMP!!!)
-        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"CheckoutStrategy\",\"choices\":\"scm\\nlastbuild\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
-       
-        //Gson gson = new Gson();
+        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
         properties.put("hudson-model-ParametersDefinitionProperty",JSONObject.fromObject(parameterkey));
         
         req.bindJSON(req,properties);
-        
-        
-        //add scm parameter
-        String checkstrategy = "CheckOut Strategy";
-        choiceslist = new ArrayList<String>();
-        //if(environment!=null)
-            choiceslist.add("scm");
-        //else
-            choiceslist.add("lastbuild");
-        
-        choices = new String[choiceslist.size()];
-        choiceslist.toArray(choices);
-        
-        paramsl.add(new ChoiceParameterDefinition( checkstrategy, choices,  description));
-        
-        if(!paramsl.isEmpty())
-            super.addProperty(new ParametersDefinitionProperty(paramsl));
         
         save();
         super.doConfigSubmit(req,rsp);
@@ -537,6 +521,33 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             }
             return items;
         }
+        
+        public ListBoxModel doFillConfigCheckBoxItems() {
+            ListBoxModel listitems = new ListBoxModel();
+            List<String> items = new ArrayList<String>();
+            String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".xml";                
+            File configfile = new File(configfilename);
+            
+            String envspath = "";
+            
+            envspath = Hudson.getInstance().getRootDir()+"/plugins/leroy/temp1/environments.xml";          
+            List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
+
+            if(envsroles!=null){
+                for (String envs : envsroles) {
+                    String tempname = XMLParser.getConfigurationElement(configfile, envs);
+                    if(tempname==null)
+                        tempname = "scm";
+                    
+                    items.add(tempname);
+                    listitems.add(envs,tempname);
+                }
+            }
+            //environment = items;
+            return listitems;
+            
+        }
+        
         public ListBoxModel doFillEnvrnItems() {
             ListBoxModel listitems = new ListBoxModel();
             List<String> items = new ArrayList<String>();
@@ -597,6 +608,27 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             workflow = items;
             return listitems;
         }
+       
+        /**
+         * get workflow and environment from scm 
+         * 
+         * @return 
+         */
+        public boolean doUpdateConfiguration(@QueryParameter("name") String name,
+                @QueryParameter("checked") Boolean checked) throws ServletException 
+        {
+           
+            String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".xml";
+                
+            File configfile = new File(configfilename);
+            if(checked) 
+                XMLParser.addConfigurationElement(configfile, name, "last");
+            else
+                XMLParser.addConfigurationElement(configfile, name, "scm");
+            
+            return false;
+        }                
+        
         
         /**
          * get workflow and environment from scm 
@@ -625,15 +657,14 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 {
                     tempfolder.mkdir();                
                 }
-//                else
-//                {
-//                    tempfolder.delete();
-//                    tempfolder.mkdir();                
-//                }
+//              else
+//              {
+//                  tempfolder.delete();
+//                  tempfolder.mkdir();                
+//              }
                 
                 if(!tempfolder1.exists())
-                {
-                    
+                {                    
                     tempfolder1.mkdir();                
                 }
                 else
@@ -677,9 +708,39 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
                 }
                 
+                //update the list
                 doFillWorkflowItems();
                 doFillEnvrnItems();
-                        
+                
+                
+                
+                //create a xml file or add workflow and enviroment if available
+                File configurationfolder = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/");
+                
+                if(!configurationfolder.exists())
+                {
+                    configurationfolder.mkdir();                
+                }
+                
+                String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".xml";
+                
+                //create xml
+                try {
+                    XMLParser.createConfigurtionXML(configfilename);
+                    
+                } catch(FileAlreadyExistsException e) {
+                    //do nothing
+                }
+                
+                //here add envrioment to xml
+                File configfile = new File(configfilename);
+                for(String s : environment){
+                    if(!XMLParser.hasConfigurationElement(configfile, s))
+                    {
+                        XMLParser.addConfigurationElement(configfile, s, "scm");
+                    }
+                }
+                
                 return check;
                 
             } 
@@ -689,43 +750,35 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             }
             
         }
-        public static void delete(File file)
-    	throws IOException{
- 
-    	if(file.isDirectory()){
- 
-    		//directory is empty, then delete it
-    		if(file.list().length==0){
- 
-    		   file.delete();
-    		   System.out.println("Directory is deleted : " 
-                                                 + file.getAbsolutePath());
- 
-    		}else{
- 
-    		   //list all the directory contents
-        	   String files[] = file.list();
- 
-        	   for (String temp : files) {
-        	      //construct the file structure
-        	      File fileDelete = new File(file, temp);
- 
-        	      //recursive delete
-        	     delete(fileDelete);
-        	   }
- 
-        	   //check the directory again, if empty then delete it
-        	   if(file.list().length==0){
-           	     file.delete();
-        	     System.out.println("Directory is deleted : " 
-                                                  + file.getAbsolutePath());
-        	   }
-    		}
- 
-    	}else{
-    		//if file, then delete it
-    		file.delete();
-    		System.out.println("File is deleted : " + file.getAbsolutePath());
-    	}
+        
+        public static void delete(File file) throws IOException { 
+            if(file.isDirectory()){
+
+                //directory is empty, then delete it
+                if(file.list().length==0){
+                   file.delete(); 
+                }else{
+
+                   //list all the directory contents
+                   String files[] = file.list();
+
+                   for (String temp : files) {
+                      //construct the file structure
+                      File fileDelete = new File(file, temp); 
+                      //recursive delete
+                      delete(fileDelete);
+                   }
+
+                   //check the directory again, if empty then delete it
+                   if(file.list().length==0){
+                     file.delete();
+                   }
+                }
+
+            }else{
+                //if file, then delete it
+                file.delete();
+                System.out.println("File is deleted : " + file.getAbsolutePath());
+            }
     }
 }
