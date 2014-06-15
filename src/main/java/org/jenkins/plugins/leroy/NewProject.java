@@ -67,6 +67,7 @@ import hudson.util.ListBoxModel;
 import java.io.File;
 import java.io.FileOutputStream;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -434,7 +435,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             try {
                 envs = computers[i].buildEnvironment(TaskListener.NULL);
                 String name = computers[i].getName();
-                if(envs.containsKey("IS_LEROY_NODE"))
+                if(envs.containsKey(Constants.IS_LEROY_NODE))
                 {    
                     setAssignedNode(computers[i].getNode());
                 }            

@@ -16,7 +16,7 @@ IF EXIST "./temp-generated_configs." (
 
 echo "Performing configuration"
 
-"%1/controller.exe" --config configurations.xml
+"%1/controller.exe" --generate-configs configurations.xml
 
 RD /S /Q "%CURRENTDIR%\" > K
 MKDIR "%CURRENTDIR%"

@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
@@ -89,9 +90,9 @@ public class LeroyBuilder extends Builder {
         for(int i = 0; i < computers.length; i++)
         {
              EnvVars envs = computers[i].buildEnvironment(TaskListener.NULL); 
-             if(envs.containsKey("IS_LEROY_NODE"))
+             if(envs.containsKey(Constants.IS_LEROY_NODE))
              {
-                 return envs.get("LEROY_HOME");
+                 return envs.get(Constants.LEROY_HOME);
              }
         }
         

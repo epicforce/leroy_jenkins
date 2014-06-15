@@ -42,6 +42,8 @@ import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
 import java.io.BufferedWriter;
+
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 import java.io.IOException;
@@ -190,16 +192,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     public Environment setUp(AbstractBuild build, Launcher launcher,
 			BuildListener listener) throws IOException, InterruptedException {
            EnvVars env = new EnvVars();
-           env.put("IS_LEROY_NODE", "TRUE");
-           env.put("LEROY_HOME", getLeroyhome());
+           env.put(Constants.IS_LEROY_NODE, "TRUE");
+           env.put(Constants.LEROY_HOME, getLeroyhome());
            env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
            return Environment.create(env);
     }
 
     @Override
     public void buildEnvVars(EnvVars env, TaskListener listener) throws IOException, InterruptedException {
-        env.put("IS_LEROY_NODE", "TRUE");
-        env.put("LEROY_HOME", getLeroyhome());
+        env.put(Constants.IS_LEROY_NODE, "TRUE");
+        env.put(Constants.LEROY_HOME, getLeroyhome());
         env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());                 
     }
     
@@ -230,11 +232,11 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
                     String name = computers[i].getName();
                     
-                    if(computers[i].getName()=="" && envs.containsKey("IS_LEROY_NODE") &&  !requesturl.contains("master"))
+                    if(computers[i].getName()=="" && envs.containsKey(Constants.IS_LEROY_NODE) &&  !requesturl.contains("master"))
                     {    
-                        throw new Descriptor.FormException("There cannot be more that one leroy node","");
+                        throw new Descriptor.FormException("There cannot be more that one leroy node","" );
                     }            
-                    else if(computers[i].getName()!="" && envs.containsKey("IS_LEROY_NODE") &&  !requesturl.contains(computers[i].getName()))
+                    else if(computers[i].getName()!="" && envs.containsKey(Constants.IS_LEROY_NODE) &&  !requesturl.contains(computers[i].getName()))
                     {
                         throw new Descriptor.FormException("There cannot be more that one leroy node","");
                     }

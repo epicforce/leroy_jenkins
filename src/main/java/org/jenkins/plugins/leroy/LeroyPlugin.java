@@ -13,6 +13,7 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import jenkins.model.Jenkins;
+import org.jenkins.plugins.leroy.util.Constants;
 
 /**
  *
@@ -37,7 +38,7 @@ public class LeroyPlugin extends Plugin{
                     Logger.getLogger(LeroyPlugin.class.getName()).log(Level.SEVERE, null, ex);
                 }
                 String name = computers[i].getName();
-                if(envs.containsKey("IS_LEROY_NODE"))
+                if(envs.containsKey(Constants.IS_LEROY_NODE))
                 {   
                     model.add("hasLeroyNode", "true");
                 }            
