@@ -60,6 +60,7 @@ import hudson.tasks.Maven.MavenInstallation;
 import hudson.triggers.Trigger;
 import hudson.util.DescribableList;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -127,30 +128,19 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
     }
 
     public List<Builder> getBuilders() {
-        LeroyConfigurationBuilder  a = new LeroyConfigurationBuilder();
-        List<Builder> temp =  getBuildersList().toList();
-        List<Builder> temp1 =  new ArrayList<Builder>();
-        
-        ListIterator<Builder> ite = temp.listIterator();
         boolean check = false;
-        boolean check1 = false;
-        while(ite.hasNext())
-        {
-            Builder ele = ite.next();
-            temp1.add(ele);
-            
-            if(ele instanceof LeroyConfigurationBuilder)
+        List<Builder> temp =  getBuildersList().toList();
+        List<Builder> builders =  new ArrayList<Builder>();
+        for (Builder builder : temp) {
+            if (builder instanceof LeroyConfigurationBuilder) {
                 check = true;
-            
-        
-            
+            }
+            builders.add(builder);
         }
-        if(!check)
-            temp1.add((Builder)a);
-        
-        
-        return temp1;
-        
+        if (!check) {
+            builders.add(new LeroyConfigurationBuilder());
+        }
+        return builders;
     }
 
     /**
@@ -296,7 +286,7 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
             try {
                 envs = computers[i].buildEnvironment(TaskListener.NULL);
                 String name = computers[i].getName();
-                if(envs.containsKey("IS_LEROY_NODE"))
+                if(envs.containsKey(Constants.IS_LEROY_NODE))
                 {    
                     setAssignedNode(computers[i].getNode());
                 }            

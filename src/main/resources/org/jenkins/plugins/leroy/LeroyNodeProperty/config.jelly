@@ -79,7 +79,7 @@
     </f:block>    
   </f:section>-->
   
-  <f:section title="Agent Upadte">
+  <f:section title="Agent Update">
             <f:advanced>
                <f:validateButton
                    title="${%Update Agent}" progress="${%Updating...}"

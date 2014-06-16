@@ -5,6 +5,7 @@ import hudson.Launcher;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Functions;
+import hudson.util.DescribableList;
 import hudson.util.FormValidation;
 import hudson.model.AbstractBuild;
 import hudson.model.BuildListener;
@@ -17,7 +18,12 @@ import hudson.tasks.BuildStepDescriptor;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+
+import jenkins.model.Jenkins;
+import jnr.constants.Constant;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
@@ -63,14 +69,18 @@ public class LeroyConfigurationBuilder extends Builder {
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
 
-        List<JobPropertyDescriptor> jobPropertyDescriptors = Functions.getJobPropertyDescriptors(NewProject.class);
+        // configuration jobs should be run on Leroy nodes only
+        if (!LeroyUtils.isLeroyNode()) {
+            listener.fatalError("Current node is not a Leroy Node");
+            return false;
+        }
+
         EnvVars envs = build.getEnvironment(listener);
         FilePath projectRoot = build.getWorkspace();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        
-        
-        String leroyhome = envs.get("LEROY_HOME");
-        listener.getLogger().println("LEROY_HOME: "+leroyhome);
+
+        String leroyhome = envs.get(Constants.LEROY_HOME);
+        listener.getLogger().println(Constants.LEROY_HOME + ": " + leroyhome);
         
         
         int returnCode;
@@ -147,5 +157,6 @@ public class LeroyConfigurationBuilder extends Builder {
         }
 
     }
+
 }
 
