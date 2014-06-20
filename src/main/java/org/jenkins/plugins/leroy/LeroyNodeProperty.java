@@ -47,6 +47,7 @@ import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.Stapler;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import javax.servlet.ServletException;
@@ -469,15 +470,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         }
          public FormValidation doCheckLeroyhome(@QueryParameter String value)
                 throws IOException, ServletException {
-            if (value.length() == 0)
+            if (value.length() == 0) {
                 return FormValidation.error("Please provide a path for leroy plugin");
-            else {
+            } else if (!canWrite(value)) {
+                return FormValidation.error("Cannot write to folder. Please check if folder exists/user has write permissions on this folder");
+            } else {
                 String filepath = value + "/agents.xml";
                 agents =  XMLParser.getAgents(new File(filepath));
                 
                 String filepath1 = value + "/environments/";
-        
-                
+
                 //get file names
                 List<String> results = new ArrayList<String>();
                 File[] files = new File(filepath1).listFiles();
@@ -535,6 +537,12 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             save();
             return super.configure(req,formData);
         }
+
+        private boolean canWrite(String path) {
+            File f = new File(path);
+            return f.canWrite();
+        }
     }
+
 
 }
