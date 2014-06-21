@@ -3,3 +3,8 @@
 .settings/
 target/
 work/
+lib/*.jar
+lib/*.war
+*.iml
+.idea
+

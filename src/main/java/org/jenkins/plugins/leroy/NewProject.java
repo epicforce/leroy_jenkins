@@ -213,8 +213,6 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
         }
         
-        ArtifactArchiver artifactArchiver = new ArtifactArchiver("**","",false);
-//        List<Publisher> temp =  getPublishersList().toList();
         ListIterator<Publisher> ite = publishers.listIterator();
         boolean check = false;
   
@@ -228,11 +226,25 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
             
         }
-        
-        if(!check)
+
+        if(!check) {
+            LeroyArtifactArchiver artifactArchiver = new LeroyArtifactArchiver("*.xml,*.key,*.pem,*.crt,commands/**,workflows/**,properties/**,environments/**","",false);
             publishers.add((Publisher)artifactArchiver);
+        }
         
         return publishers;
+    }
+
+    public List<Publisher> getVisiblePublishersList() {
+        ListIterator<Publisher> it = getPublishersList().listIterator();
+        List<Publisher> visiblePublishers = new ArrayList<Publisher>();
+        while (it.hasNext()) {
+            Publisher publisher = it.next();
+            if (!(publisher instanceof Hidden)) {
+                visiblePublishers.add(publisher);
+            }
+        }
+        return visiblePublishers;
     }
 
     public Map<Descriptor<BuildWrapper>,BuildWrapper> getBuildWrappers() {
