@@ -4,15 +4,8 @@ import hudson.Launcher;
 import hudson.Extension;
 import hudson.FilePath;
 import hudson.Functions;
+import hudson.model.*;
 import hudson.util.FormValidation;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.AbstractProject;
-import hudson.model.Build;
-import hudson.model.Computer;
-import hudson.model.Hudson;
-import hudson.model.JobPropertyDescriptor;
-import hudson.model.TaskListener;
 import hudson.plugins.copyartifact.CopyArtifact;
 import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.tasks.Builder;
@@ -24,6 +17,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import net.sf.json.JSONObject;
 import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.QueryParameter;
@@ -136,7 +130,10 @@ public class LeroyBuilder extends Builder {
         String leroypath = envs.expand(this.getLeroyhome());
         String envrn = envs.get("Environment");
         String workflow = envs.get("Workflow");
-           
+
+        build.setDisplayName(envrn + "_" + workflow);
+        build.setDescription("By: " + LeroyUtils.getUserRunTheBuild(build));
+
         String checkoutstrategy = XMLParser.getConfigurationElement(configfile, envrn);
         
         if(checkoutstrategy==null)
