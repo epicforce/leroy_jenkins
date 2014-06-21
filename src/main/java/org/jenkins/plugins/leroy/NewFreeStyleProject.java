@@ -152,7 +152,12 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
     public NewFreeStyleProject.DescriptorImpl getDescriptor() {
         return (NewFreeStyleProject.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(getClass());
     }
-    
+
+    @Override
+    public String getBuildNowText() {
+        return "Deploy";
+    }
+
     public String getIconPath() 
     {
         String path = Hudson.getInstance().getRootDir() + "/plugins/leroy/jenkins.png";
