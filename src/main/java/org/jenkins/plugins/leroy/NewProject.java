@@ -24,30 +24,14 @@
  */
 package org.jenkins.plugins.leroy;
 
+import com.ctc.wstx.util.StringUtil;
+import com.jayway.jsonpath.JsonPath;
 import hudson.EnvVars;
 import hudson.FilePath;
 import hudson.Launcher;
 import hudson.Util;
-import hudson.model.AbstractBuild;
-import hudson.model.AbstractProject;
-import hudson.model.Action;
-import hudson.model.BuildListener;
-import hudson.model.BuildableItemWithBuildWrappers;
-import hudson.model.ChoiceParameterDefinition;
-import hudson.model.Computer;
-import hudson.model.DependencyGraph;
-import hudson.model.Descriptor;
+import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.model.Hudson;
-import hudson.model.Item;
-import hudson.model.ItemGroup;
-import hudson.model.ParameterDefinition;
-import hudson.model.ParametersDefinitionProperty;
-import hudson.model.ResourceActivity;
-import hudson.model.SCMedItem;
-import hudson.model.Saveable;
-import hudson.model.StreamBuildListener;
-import hudson.model.TaskListener;
 import hudson.plugins.copyartifact.CopyArtifact;
 import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.scm.SCM;
@@ -66,8 +50,16 @@ import hudson.util.DescribableList;
 import hudson.util.ListBoxModel;
 import java.io.File;
 import java.io.FileOutputStream;
+
+import net.minidev.json.JSONArray;
 import net.sf.json.JSONObject;
+import org.apache.commons.lang.StringUtils;
+import org.jaxen.jdom.JDOMXPath;
+import org.jenkins.plugins.leroy.beans.*;
+import org.jenkins.plugins.leroy.beans.Environment;
+import org.jenkins.plugins.leroy.util.ConfigurationHelper;
 import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
@@ -213,8 +205,6 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
         }
         
-        ArtifactArchiver artifactArchiver = new ArtifactArchiver("**","",false);
-//        List<Publisher> temp =  getPublishersList().toList();
         ListIterator<Publisher> ite = publishers.listIterator();
         boolean check = false;
   
@@ -228,11 +218,25 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
             
         }
-        
-        if(!check)
+
+        if(!check) {
+            LeroyArtifactArchiver artifactArchiver = new LeroyArtifactArchiver("*.xml,*.key,*.pem,*.crt,commands/**,workflows/**,properties/**,environments/**","",false);
             publishers.add((Publisher)artifactArchiver);
+        }
         
         return publishers;
+    }
+
+    public List<Publisher> getVisiblePublishersList() {
+        ListIterator<Publisher> it = getPublishersList().listIterator();
+        List<Publisher> visiblePublishers = new ArrayList<Publisher>();
+        while (it.hasNext()) {
+            Publisher publisher = it.next();
+            if (!(publisher instanceof Hidden)) {
+                visiblePublishers.add(publisher);
+            }
+        }
+        return visiblePublishers;
     }
 
     public Map<Descriptor<BuildWrapper>,BuildWrapper> getBuildWrappers() {
@@ -334,46 +338,138 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
 
         return r;
     }
+
+    private void updateConfig(String json) throws IOException {
+        String configFilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".json";
+        ConfigurationHelper config = new ConfigurationHelper(configFilename);
+
+        List<String> enabledEnvs = LeroyBuildHelper.getEnabledEnvironments(json);
+        config.setEnabledEnvironments(enabledEnvs);
+        config.setDefaultEnvironment(LeroyBuildHelper.getDefaultEnvironment(json));
+        config.setAutodeployEnvironments(LeroyBuildHelper.getAutodeployEnvironments(json));
+        config.setDefaultWorkflow(LeroyBuildHelper.getDefaultWorkflow(json));
+        config.putUsedConfigs(LeroyBuildHelper.getEnvUsedConfigs(json));
+        config.flush();
+    }
+
     /**
      * new doConfigSubmit to update build with parameters
      * @param req
      * @param rsp
      * @throws IOException
      * @throws ServletException
-     * @throws hudson.model.Descriptor.FormException 
-     * 
+     * @throws hudson.model.Descriptor.FormException
+     *
      */
     @Override
     public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
-        
         JSONObject json = req.getSubmittedForm();
-        
+        updateConfig(json.toString());
+
+        String configFilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".json";
+        ConfigurationHelper config = new ConfigurationHelper(configFilename);
+
+//        if (config.getDefaultEnabledAutodeploy() == null) {
+            // is not eligible to autodeploy - form parameters list
+
+            // get default env and put it on the top of the list of enabled environments
+            List<Environment> enabledEnvs = config.getEnabledEnvironments();
+            Environment defEnv = config.getDefaultEnvironment();
+            if (defEnv != null && enabledEnvs.contains(defEnv)) {
+                enabledEnvs.remove(defEnv);
+                enabledEnvs.add(0,defEnv);
+            }
+
+            // get default workflow and put it on the top of the list of workflows
+            List<Workflow> wfs = config.getWorkflows();
+            Workflow defWf = config.getDefaultWorkflow();
+            if (defWf != null && wfs.contains(defWf)) {
+                wfs.remove(defWf);
+                wfs.add(0, defWf);
+            }
+
+            // create choises to pass it to JSON
+            List<String> envNames = new ArrayList<String>();
+            for (Environment env : enabledEnvs) {
+                envNames.add(env.getName());
+            }
+            String envsChoises = StringUtils.join(envNames, "\\n");
+            List<String> wfNames = new ArrayList<String>();
+            for (Workflow wf : wfs) {
+                wfNames.add(wf.getName());
+            }
+            String wfsChoises = StringUtils.join(wfNames, "\\n");
+
+            // add to request
+            String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+wfsChoises+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+envsChoises+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
+            JSONObject properties = json.getJSONObject("properties");
+            properties.put("hudson-model-ParametersDefinitionProperty",JSONObject.fromObject(parameterkey));
+            req.bindJSON(req,properties);
+
+//        }
+
+        save();
+        super.doConfigSubmit(req,rsp);
+
+        //set node
+        Jenkins jenkins = Jenkins.getInstance();
+        Computer[] computers = jenkins.getComputers();
+
+        for(int i = 0; i < computers.length; i++)
+        {
+            EnvVars envs = null;
+            try {
+                envs = computers[i].buildEnvironment(TaskListener.NULL);
+                String name = computers[i].getName();
+                if(envs.containsKey(Constants.IS_LEROY_NODE))
+                {
+                    setAssignedNode(computers[i].getNode());
+                }
+
+            } catch (InterruptedException ex) {
+                Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
+            }
+
+
+
+        }
+
+        // notify the queue as the project might be now tied to different node
+        Jenkins.getInstance().getQueue().scheduleMaintenance();
+        // this is to reflect the upstream build adjustments done above
+        Jenkins.getInstance().rebuildDependencyGraphAsync();
+
+    }
+
+    /*
+    @Override
+    public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
+
+        JSONObject json = req.getSubmittedForm();
+
+        updateConfig(json.toString());
+
         JSONObject properties = json.getJSONObject("properties");
-       
-        properties.remove("hudson-model-ParametersDefinitionProperty");
+        // builder.hsa envtablediv[0].envtable enabled_envs[]
+//        properties.remove("hudson-model-ParametersDefinitionProperty");
         String worflow = "Workflow";
-        
+
+        getName()
+
         doFillEnvrnItems();
         doFillWorkflowItems();
         List<String> choiceslist;
-        if(workflow!=null)
+        if(workflow!=null) {
             choiceslist  = workflow;
-        else
+        } else {
             choiceslist = getWorkflowItems();
+        }
         String[] choices = new String[choiceslist.size()];
         choiceslist.toArray(choices);
         
         //choices to string
-        Iterator<String> ite = choiceslist.iterator();
-        String tempworkflow ="";
-        while(ite.hasNext())
-        {
-            String tempp = ite.next();          
-            tempworkflow = tempworkflow + tempp + "\\n";
-        }
-        if(tempworkflow.length()>2)
-            tempworkflow = tempworkflow.substring(0,tempworkflow.length()-2);
-       
+        String tempworkflow =StringUtils.join(choiceslist, "\\n");
+
         String description ="";
         ChoiceParameterDefinition test=null;
         if(choices.length>0)      
@@ -381,7 +477,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         else
             tempworkflow="None";
         
-        List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
+//        List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
         
         String env = "Environment";
         if(environment!=null)
@@ -393,31 +489,28 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         choiceslist.toArray(choices);
         
         //choices to string
-        ite = choiceslist.iterator();
-        String tempenv ="";
-        while(ite.hasNext())
-        {
-            String tempp = ite.next();
-            tempenv = tempenv + tempp + "\\n";
-        }
-        if(tempenv.length()>2)
-            tempenv = tempenv.substring(0,tempenv.length()-2);
-       
-        description ="";
-        ChoiceParameterDefinition test1=null;
-        if(choices.length>0)
-            test1 = new ChoiceParameterDefinition( env, choices,  description);
-        else
+//        String tempenv = StringUtils.join(choiceslist, "\\n");
+        String tempenv = StringUtils.join(LeroyBuildHelper.getEnabledEnvironments(json.toString()), "\\n");
+
+//        ChoiceParameterDefinition test1=null;
+//        if(choices.length>0)
+//            test1 = new ChoiceParameterDefinition( env, choices,  description);
+//        else
+//            tempenv="None";
+        if (choices.length <= 0) {
             tempenv="None";
+        }
             
-        if(test!=null)
-            paramsl.add(test);
-        
-        if(test1!=null)
-            paramsl.add(test1);
+//        if(test!=null)
+//            paramsl.add(test);
+//
+//        if(test1!=null)
+//            paramsl.add(test1);
         
         //this is a hack(need to figureout a better a way)(IMP!!!)
+
         String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
+//        String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"Workflow\",\"choices\":\""+tempworkflow+"\",\"defaultValue\":\"internal_test\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"},{\"name\":\"Environment\",\"choices\":\""+tempenv+"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
         properties.put("hudson-model-ParametersDefinitionProperty",JSONObject.fromObject(parameterkey));
         
         req.bindJSON(req,properties);
@@ -453,7 +546,7 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
         // this is to reflect the upstream build adjustments done above
         Jenkins.getInstance().rebuildDependencyGraphAsync();
     }
-    
+*/
      public List<String> getEnvrnItems() {
             List<String> items = new ArrayList<String>();
             
@@ -522,7 +615,19 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
             }
             return items;
         }
-        
+
+        public String doGetConfig() {
+            String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".json";
+            String res = "";
+            try {
+                ConfigurationHelper configurationHelper = new ConfigurationHelper(configfilename);
+                return configurationHelper.toString();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return "";
+        }
+
         public ListBoxModel doFillConfigCheckBoxItems() {
             ListBoxModel listitems = new ListBoxModel();
             List<String> items = new ArrayList<String>();
@@ -605,6 +710,22 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 items.add(role);
                 listitems.add(role,role);
             }
+
+            //select default item
+//            String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".json";
+//            try {
+//                ConfigurationHelper configurationHelper = new ConfigurationHelper(configfilename);
+//                Workflow defaultWf = configurationHelper.getDefaultWorkflow();
+//                for (int i = 0; i < listitems.size(); i++) {
+//                    if (listitems.get(i).name.equals(defaultWf.getName())) {
+//                        listitems.get(i).selected = true;
+//                    }
+//                }
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+
+
             //listitems.addAll(items);
             workflow = items;
             return listitems;
@@ -724,16 +845,21 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                 }
                 
                 String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".xml";
-                
+                String configfilename1 = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+getName()+".json";
+
+                // create json config
+                ConfigurationHelper config = new ConfigurationHelper(configfilename1);
                 //create xml
                 try {
                     XMLParser.createConfigurtionXML(configfilename);
+
                     
                 } catch(FileAlreadyExistsException e) {
                     //do nothing
                 }
                 
                 //here add envrioment to xml
+                // to remove
                 File configfile = new File(configfilename);
                 for(String s : environment){
                     if(!XMLParser.hasConfigurationElement(configfile, s))
@@ -741,6 +867,24 @@ public abstract class NewProject<P extends NewProject<P,B>,B extends NewBuild<P,
                         XMLParser.addConfigurationElement(configfile, s, "scm");
                     }
                 }
+
+                // fill in config
+                // add environments wiht default values
+                for (String envName : environment) {
+                    Environment env = config.findEnvironment(envName);
+                    if (env == null) {
+                        config.add(new Environment(envName, false, true, false, "scm"));
+                    }
+                }
+                // add workflows with default values
+                for (String wfName : workflow) {
+                    Workflow wf = config.findWorkflow(wfName);
+                    if (wf == null) {
+                        config.add(new Workflow(wfName, false));
+                    }
+                }
+                // save changes
+                config.flush();
                 
                 return check;
                 

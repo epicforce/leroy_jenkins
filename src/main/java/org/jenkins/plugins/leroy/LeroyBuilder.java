@@ -16,6 +16,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.beans.*;
+import org.jenkins.plugins.leroy.beans.Environment;
+import org.jenkins.plugins.leroy.util.ConfigurationHelper;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -122,20 +125,29 @@ public class LeroyBuilder extends Builder {
         EnvVars envs = build.getEnvironment(listener);
         FilePath projectRoot = build.getWorkspace();
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        
-        String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+build.getProject().getName()+".xml";
-        File configfile = new File(configfilename);
+
+        envrn = envs.get(Constants.ENVIRONMENT_PARAM);
+
+//        String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+build.getProject().getName()+".xml";
+        String configfilename = Hudson.getInstance().getRootDir()+"/plugins/leroy/configuration/"+build.getProject().getName()+".json";
+//        File configfile = new File(configfilename);
+        ConfigurationHelper config = new ConfigurationHelper(configfilename);
         
         
         String leroypath = envs.expand(this.getLeroyhome());
-        String envrn = envs.get("Environment");
-        String workflow = envs.get("Workflow");
+//        String envrn = envs.get("Environment");
+//        String workflow = envs.get("Workflow");
+//
+//        build.setDisplayName(envrn + "_" + workflow);
+//        build.setDescription("By: " + LeroyUtils.getUserRunTheBuild(build));
 
-        build.setDisplayName(envrn + "_" + workflow);
-        build.setDescription("By: " + LeroyUtils.getUserRunTheBuild(build));
+//        String checkoutstrategy = XMLParser.getConfigurationElement(configfile, envrn);
+        Environment env =  config.findEnvironment(envrn);
+        String checkoutstrategy = "scm";
+        if (env != null) {
+            checkoutstrategy = env.getUsedConfig();
+        }
 
-        String checkoutstrategy = XMLParser.getConfigurationElement(configfile, envrn);
-        
         if(checkoutstrategy==null)
             checkoutstrategy="scm";
         
@@ -184,10 +196,10 @@ public class LeroyBuilder extends Builder {
                     //}
                  
                     //remove contents of directory
-                    returnCode = launcher.launch().envs(envs).cmds("rm" ,"-fR", workspacepath+"*", leroypath).stdout(output).pwd(projectRoot).join();
+                    returnCode = launcher.launch().envs(envs).cmds("rm" ,"-fR", workspacepath+"*").stdout(output).pwd(projectRoot).join();
                
                     //copy the contents from last successful archive
-                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath,false, false, true);
+                    copyartifact = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspacepath, false, false, true);
                 
                 } catch (InterruptedException ex) {
                     Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
@@ -398,8 +410,9 @@ public class LeroyBuilder extends Builder {
         
         public ListBoxModel doFillWorkflowItems() {
             ListBoxModel items = new ListBoxModel();
-            
+
             String workflowpath = "";
+
             
             try {
                 workflowpath = LeroyBuilder.getLeroyhome()+"/workflows/";

@@ -35,6 +35,9 @@ import hudson.tasks.BuildWrapper;
 import hudson.tasks.Builder;
 import hudson.tasks.Recorder;
 import hudson.tasks.Notifier;
+import jnr.constants.Constant;
+import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -142,7 +145,19 @@ public abstract class NewBuild <P extends NewProject<P,B>,B extends NewBuild<P,B
             deprecated class here.
          */
 
+        private void setNameDescription() throws IOException, InterruptedException {
+            String envParam = getBuild().getEnvironment(listener).get(Constants.ENVIRONMENT_PARAM);
+            String wfParam = getBuild().getEnvironment(listener).get(Constants.WORKFLOW_PARAM);
+            String user =  LeroyUtils.getUserRunTheBuild(getBuild());
+
+            getBuild().setDisplayName(envParam + "_" + wfParam);
+            getBuild().setDescription("By: " + user);
+        }
+
         protected Result doRun(BuildListener listener) throws Exception {
+
+            setNameDescription();
+
             if(!preBuild(listener,project.getBuilders()))
                 return FAILURE;
             if(!preBuild(listener,project.getPublishersList()))
@@ -151,8 +166,9 @@ public abstract class NewBuild <P extends NewProject<P,B>,B extends NewBuild<P,B
             Result r = null;
             try {
                 List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
-                
                 ParametersAction parameters = getAction(ParametersAction.class);
+
+
                 if (parameters != null)
                     parameters.createBuildWrappers(NewBuild.this,wrappers);
 
