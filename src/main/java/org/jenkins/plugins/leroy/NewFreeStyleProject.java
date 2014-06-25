@@ -248,12 +248,13 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
     
 
     public static class DescriptorImpl extends AbstractProjectDescriptor  {
-       
+
+        @Override
         public String getDisplayName() {
-            return "Leroy Jenkins Job";
+            return "Leroy Deployment Job";
         }
 
-        
+
         
         public NewFreeStyleProject newInstance(ItemGroup parent, String name) {
             try {

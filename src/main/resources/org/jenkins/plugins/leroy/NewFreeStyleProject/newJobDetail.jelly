@@ -24,5 +24,5 @@ THE SOFTWARE.
 
 <?jelly escape-by-default='true'?>
 <div>
-      This job type can be used to execute Leroy Deployment jobs. 
+    This job is used to deploy Leroy workflows from your SCM location to one or many environments. This requires a node with a Leroy controller setup in Jenkins. More information: <a href="http://www.leroydeploy.com"/>
 </div>
