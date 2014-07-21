@@ -58,8 +58,6 @@ THE SOFTWARE.
     </t:summary>
 
    <!-- table of deployments -->
-
-
     <table>
         <tr>
             <th></th>
@@ -74,7 +72,7 @@ THE SOFTWARE.
                 <td><img src="${stat.resultIcon}"/></td>
                 <td><a href="#" class="datatable_env">${stat.env}</a></td>
                 <td><a href="#" class="datatable_workflow">${stat.workflow}</a></td>
-                <td>${stat.deployer}</td>
+                <td><a href="/user/${stat.deployer}">${stat.deployer}</a></td>
                 <td>${stat.timestampString}</td>
                 <td><a href="${stat.artifactsLink}" class="datatable_artifact">${%Artifacts}</a></td>
             </tr>
