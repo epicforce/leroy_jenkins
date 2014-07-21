@@ -32,6 +32,7 @@ THE SOFTWARE.
         <p:config-upstream-pseudo-trigger />
     </p:config-trigger>
     <p:config-buildWrappers />
-    <p:config-builders />
+    <!--<p:config-builders />-->
+    <st:include page="config-builders.jelly" />
     <p:config-publishers2 />
 </j:jelly>

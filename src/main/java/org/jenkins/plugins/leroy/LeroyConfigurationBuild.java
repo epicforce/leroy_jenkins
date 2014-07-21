@@ -23,13 +23,13 @@
  */
 package org.jenkins.plugins.leroy;
 
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
 
 /**
  * @author Kohsuke Kawaguchi
  */
-public class LeroyConfigurationBuild  extends ConfigurationBuild<LeroyConfigurationProject,LeroyConfigurationBuild> {
+public class LeroyConfigurationBuild extends ConfigurationBuild<LeroyConfigurationProject, LeroyConfigurationBuild> {
     public LeroyConfigurationBuild(LeroyConfigurationProject project) throws IOException {
         super(project);
     }

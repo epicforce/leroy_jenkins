@@ -27,235 +27,268 @@ import hudson.EnvVars;
 import hudson.Extension;
 import hudson.Functions;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.Computer;
-import hudson.model.ComputerSet;
-import hudson.model.Descriptor;
-import hudson.model.Descriptor.FormException;
-import hudson.model.Environment;
-import hudson.model.Hudson;
-import hudson.model.Node;
-import hudson.model.TaskListener;
+import hudson.model.*;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
-import java.io.BufferedWriter;
-
-import org.jenkins.plugins.leroy.util.Constants;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.Stapler;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.util.ArrayList;
-import java.util.List;
-import javax.servlet.ServletException;
-import org.kohsuke.stapler.QueryParameter;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.Writer;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.leroy.beans.Update;
+import org.jenkins.plugins.leroy.jaxb.beans.AgentBean;
+import org.jenkins.plugins.leroy.jaxb.beans.ControllerBean;
+import org.jenkins.plugins.leroy.jaxb.beans.EnvironmentBean;
+import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.jenkins.plugins.leroy.util.XMLParser;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.Stapler;
 import org.kohsuke.stapler.StaplerRequest;
+
+import javax.servlet.ServletException;
+import java.io.File;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * {@link NodeProperty} that sets additional node properties.
- *
+ * @author Dzmitry Bahdanovich
  * @since 1.286
  */
 public class LeroyNodeProperty extends NodeProperty<Node> {
-    
+
     private String leroyhome;
-    
-    private String leroycontrollerport;
-    
+
     private String architecture;
-   
-    public static List<String> agents = new ArrayList<String>();
-    
-    public static List<String> environments = new ArrayList<String>();
-    
-    public static List<String> roles = new ArrayList<String>();
-    
-    
-    
+
+    private List<AgentBean> installedAgents;
+
+    /**
+     * The list of environments on this node
+     */
+    private List<EnvironmentBean> environments;
+
+    // controller settings
+    private String controllerHost;
+    private String controllerPort;
+    private String controllerBind;
+    private String controllerLogFile;
+    private String controllerLogLevel;
+    private String controllerTimeout;
+
+    private String controllerVersion;
+
+
     @DataBoundConstructor
-    public LeroyNodeProperty(String leroyhome, String leroycontrollerport,String architecture) {
-        this.leroyhome = leroyhome; 
-        this.leroycontrollerport = leroycontrollerport;
+    public LeroyNodeProperty(String leroyhome, String architecture, String controllerHost, String controllerPort, String controllerBind, String controllerLogFile, String controllerLogLevel, String controllerTimeout, List<AgentBean> installedAgents, List<EnvironmentBean> environments) {
+        this.leroyhome = leroyhome;
         this.architecture = architecture;
-       //not used because addagent feature has been removed
-//        String filepath = leroyhome + "/agents.xml";
-//        agents =  XMLParser.getAgents(new File(filepath));
-//
-//        String filepath1 = leroyhome + "/environments/";
-//        
-//        
-//        //get file names
-//        List<String> results = new ArrayList<String>();
-//        File[] files = new File(filepath1).listFiles();
-//        
-//        
-//        if(files.length > 0)
-//        {
-//        for (File file : files) {
-//            if (file.isFile()) {
-//                results.add(file.getName());
-//            }
-//        }
-//
-//        List<String> envs = new ArrayList<String>();
-//        List<String> envsroles = new ArrayList<String>();
-//
-//        for(String fname : results)
-//        {
-//            XMLParser.getEnvironment(new File(filepath1+fname));
-//            envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
-//            envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
-//        } 
-//        envsroles.add("<NEW ROLE>");
-//        environments = envs;
-//        roles = envsroles;
-//        }
+        this.controllerHost = controllerHost;
+        this.controllerPort = controllerPort;
+        this.controllerBind = controllerBind;
+        this.controllerLogFile = controllerLogFile;
+        this.controllerLogLevel = controllerLogLevel;
+        this.controllerTimeout = controllerTimeout;
+        this.installedAgents = installedAgents;
+        this.environments = environments;
+        updateControllerXml();
+        updateAgentsXml();
+        updateEnvironmentsXml();
     }
-	
+
+    private void updateControllerXml() {
+        String controllerXml = leroyhome + "/controller.xml";
+        ControllerBean controller = new ControllerBean();
+        controller.setHost(controllerHost);
+        controller.setPort(controllerPort);
+        controller.setBind(controllerBind);
+        controller.setLogFile(controllerLogFile);
+        controller.setLogLevel(controllerLogLevel);
+        controller.setAgentsCheckinTimeout(controllerTimeout);
+        XMLParser.saveController(controller, controllerXml);
+    }
+
+    private void updateControllerJobProperties() {
+        String controllerXml = leroyhome + "/controller.xml";
+        ControllerBean controller = XMLParser.readController(controllerXml);
+        controllerHost = controller.getHost();
+        controllerPort = controller.getPort();
+        controllerBind = controller.getBind();
+        controllerLogFile = controller.getLogFile();
+        controllerLogLevel = controller.getLogLevel();
+        controllerTimeout = controller.getAgentsCheckinTimeout();
+    }
+
+    public List<EnvironmentBean> getEnvironments() {
+        // dumb
+//        environments = new ArrayList<EnvironmentBean>();
+//
+//        List<AgentInEnvironmentBean> agents = new ArrayList<AgentInEnvironmentBean>();
+//        agents.add(new AgentInEnvironmentBean("agent1","admin,customer,deployer","id1"));
+//        agents.add(new AgentInEnvironmentBean("agent2","admin,deployer","id2"));
+//        agents.add(new AgentInEnvironmentBean("agent3","admin","id3"));
+//
+//        environments.add(new EnvironmentBean("env1", agents ));
+//        environments.add(new EnvironmentBean("env2", agents ));
+        environments = XMLParser.readEnvironments(leroyhome + "/environments.xml");
+
+        return environments;
+    }
+
+    public void setEnvironments(List<EnvironmentBean> environments) {
+        this.environments = environments;
+    }
+
+    public List<AgentBean> getInstalledAgents() {
+        installedAgents = XMLParser.readAgents(leroyhome + "/agents.xml");
+        return installedAgents;
+    }
+
+    public void setInstalledAgents(List<AgentBean> installedAgents) {
+        this.installedAgents = installedAgents;
+    }
+
+    private void updateAgentsXml() {
+        if (installedAgents == null) {
+            return;
+        }
+        String agentsXml = leroyhome + "/agents.xml";
+        XMLParser.saveAgents(installedAgents, agentsXml);
+    }
+
+
+    private void updateEnvironmentsXml() {
+        if (CollectionUtils.isEmpty(environments)) {
+            return;
+        }
+        String xmlFile = leroyhome + "/environments.xml";
+        XMLParser.saveEnvironments(environments, xmlFile);
+    }
+
+    private synchronized ControllerBean getControllerBean() {
+        return XMLParser.readController(leroyhome + "/controller.xml");
+    }
+
     public String getLeroyhome() {
         return leroyhome;
     }
-   
-    public String getLeroycontrollerport() {
-        return leroycontrollerport;
-    }
-   
-   
+
     public String getarchitecture() {
         return architecture;
     }
-    
-    public List<String> getList(){
-        return agents;
-    }
-    
-    public List<String> getAgentList(){
-        String filepath = getLeroyhome() + "/agents.xml";
-        return XMLParser.getAgents(new File(filepath));
-    }
-    
-    public List<String> getEnvironmentList(){
-        String filepath = getLeroyhome() + "/environments/";
-        
-        //get file names
-        List<String> results = new ArrayList<String>();
-        File[] files = new File(filepath).listFiles();
 
-        for (File file : files) {
-            if (file.isFile()) {
-                results.add(file.getName());
-            }
-        }
-        
-        List<String> envs = new ArrayList<String>();
-        for(String fname : results)
-        {
-            envs.addAll(XMLParser.getAgents(new File(filepath+fname)));
-        } 
-        
-        return envs;
+    public String getControllerHost() {
+        return getControllerBean().getHost();
     }
-    
-     /**
-     * Get LEROY_HOME
-     */
-//    public int hasOtherNode() throws InterruptedException, IOException {
-//        Jenkins jenkins = Jenkins.getInstance();
-//        Computer[] computers = jenkins.getComputers();
-//        
-//        for(int i = 0; i < computers.length; i++)
-//        {
-//             EnvVars envs = computers[i].buildEnvironment(TaskListener.NULL); 
-//             if(envs.containsKey("IS_LEROY_NODE"))
-//             {
-//                 return envs.get("LEROY_HOME");
-//             }
-//        }
-//        
-//        return null;
-//    }
-    
-    
+
+    public String getControllerPort() {
+        return getControllerBean().getPort();
+    }
+
+    public String getControllerBind() {
+        return getControllerBean().getBind();
+    }
+
+    public String getControllerLogFile() {
+        return getControllerBean().getLogFile();
+    }
+
+    public String getControllerLogLevel() {
+        return getControllerBean().getLogLevel();
+    }
+
+    public String getControllerTimeout() {
+        return getControllerBean().getAgentsCheckinTimeout();
+    }
+
+    public String getControllerVersion() {
+        String res = "N/A";
+        try {
+            res = LeroyUtils.runController(getLeroyhome(), Functions.getEnvVars(), new String[]{"-v"});
+            // get last string
+            if (res != null) {
+                String[] resLines = res.split(System.lineSeparator());
+                if (res.length() > 0) {
+                    res = resLines[res.length()-1];
+                }
+            }
+            int version = 0;
+            try {
+                res = String.valueOf(Integer.valueOf(res)); // is number?
+            } catch (NumberFormatException e) {
+                res = "N/A";
+            }
+        } catch (Exception e) {
+            // just omit
+        }
+        return res;
+    }
+
+
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher,
-			BuildListener listener) throws IOException, InterruptedException {
-           EnvVars env = new EnvVars();
-           env.put(Constants.IS_LEROY_NODE, "TRUE");
-           env.put(Constants.LEROY_HOME, getLeroyhome());
-           env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());
-           return Environment.create(env);
+                             BuildListener listener) throws IOException, InterruptedException {
+        EnvVars env = new EnvVars();
+        env.put(Constants.IS_LEROY_NODE, "TRUE");
+        env.put(Constants.LEROY_HOME, getLeroyhome());
+        return Environment.create(env);
     }
 
     @Override
     public void buildEnvVars(EnvVars env, TaskListener listener) throws IOException, InterruptedException {
         env.put(Constants.IS_LEROY_NODE, "TRUE");
         env.put(Constants.LEROY_HOME, getLeroyhome());
-        env.put("LEROY_CONTROLLER_PORT", getLeroycontrollerport());                 
     }
-    
-    public String getNodeName(){
-        return this.node.getNodeName();
-    }
-        
+
+
     @Override
     public NodeProperty<?> reconfigure(org.kohsuke.stapler.StaplerRequest req, net.sf.json.JSONObject form) throws Descriptor.FormException {
-        
+
         String requesturl = req.getOriginalRequestURI();
         JSONObject json = null;
         try {
-       
+
             json = req.getSubmittedForm();
-            
+
             JSONObject nodeproperties = json.getJSONObject("nodeProperties");
- 
-            if(nodeproperties.containsKey("org-jenkins-plugins-leroy-LeroyNodeProperty"))
-            {                 
+
+            if (nodeproperties.containsKey("org-jenkins-plugins-leroy-LeroyNodeProperty")) {
                 Jenkins jenkins = Jenkins.getInstance();
                 Computer[] computers = jenkins.getComputers();
 
-                for(int i = 0; i < computers.length; i++)
-                {
-                    EnvVars envs = null; 
+                for (int i = 0; i < computers.length; i++) {
+                    EnvVars envs = null;
                     envs = computers[i].buildEnvironment(TaskListener.NULL);
 
                     String name = computers[i].getName();
-                    
-                    if(computers[i].getName()=="" && envs.containsKey(Constants.IS_LEROY_NODE) &&  !requesturl.contains("master"))
-                    {    
-                        throw new Descriptor.FormException("There cannot be more that one leroy node","" );
-                    }            
-                    else if(computers[i].getName()!="" && envs.containsKey(Constants.IS_LEROY_NODE) &&  !requesturl.contains(computers[i].getName()))
-                    {
-                        throw new Descriptor.FormException("There cannot be more that one leroy node","");
-                    }
+
+                        // TODO remove check for single LEROY_HOME
+//                    if (computers[i].getName() == "" && envs.containsKey(Constants.IS_LEROY_NODE) && !requesturl.contains("master")) {
+//                        throw new Descriptor.FormException("There cannot be more that one leroy node", "");
+//                    } else if (computers[i].getName() != "" && envs.containsKey(Constants.IS_LEROY_NODE) && !requesturl.contains(computers[i].getName())) {
+//                        throw new Descriptor.FormException("There cannot be more that one leroy node", "");
+//                    }
 
                 }
             }
         } catch (ServletException ex) {
             Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
-        }catch (IOException ex) {
+        } catch (IOException ex) {
             Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
         } catch (InterruptedException ex) {
             Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
-        
         return super.reconfigure(req, form);
     }
-    
+
     /**
      *
      */
@@ -263,264 +296,173 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     public static class DescriptorImpl extends NodePropertyDescriptor {
 
         @Override
-	public String getDisplayName() {
-			return "Leroy Host";
-	}
+        public String getDisplayName() {
+            return "Leroy Host"; //TODO externalize
+        }
 
-        public ListBoxModel doFillGoalTypeItems() {
+        public ListBoxModel doFillControllerLogLevelItems() {
             ListBoxModel items = new ListBoxModel();
-            for (String agent : agents) {
-                items.add(agent,agent);
-            }
-             return items;
-        }
-        
-        //not being used
-        public ListBoxModel doFillRolesItems() {
-            ListBoxModel items = new ListBoxModel();
-            for (String role : roles) {
-                items.add(role,role);
-            }
+            items.add("none", "none");
+            items.add("debug", "debug");
+            items.add("info", "info");
+            items.add("warning", "warning");
+            items.add("error", "error");
             return items;
         }
-        
-        //not being used
-        public ListBoxModel doFillEnvironmentItems() {
-            ListBoxModel items = new ListBoxModel();
-            for (String env : environments) {
-                items.add(env,env);
-            }
-            return items;
-        }
-       
-        
+
         public ListBoxModel doFillArchitectureItems() {
             ListBoxModel items = new ListBoxModel();
-            
-            items.add("86","86");
-            items.add("64","64");
 
+            for (Constants.Architecture arc : Constants.Architecture.values()) {
+                items.add(arc.getValue(), arc.getValue());
+            }
             return items;
         }
-        
-        public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyhome, 
-                @QueryParameter("agentname") final String agentname, 
-                @QueryParameter("nodename") final String nodename ) 
-                throws IOException, ServletException {
-                 ByteArrayOutputStream output = new ByteArrayOutputStream();
-               
+
+        public ListBoxModel doFillAgentPlatformItems() {
+            return doFillArchitectureItems();
+        }
+
+
+        public static void main(String[] args) {
             try {
                 Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-                Writer writer = null;
+                ByteArrayOutputStream output = new ByteArrayOutputStream();
+                List<String> params = new ArrayList<String>();
+                params.add("--addagent");
+                params.add("--agent-name");
+                params.add("222");
+                params.add("--agent-platform");
+                params.add("Win64");
+                params.add("--agent-lockerpath");
+                params.add("");
+                int returnCode = launcher.launch().pwd("C:\\leroy\\").envs(Functions.getEnvVars()).cmds(params).stdout(output).join();
 
-                try {
-                    writer = new BufferedWriter(new OutputStreamWriter(
-                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
-                    if(launcher.isUnix())
-                        writer.write("1\n"+agentname+"\n");
-                       
-                    else
-                        writer.write("3\r\n"+agentname+"\r\n");
-                } catch (IOException ex) {
-                  return FormValidation.error("error creating file: "+ex.getMessage());
-                } finally {
-                   try {writer.close();} catch (Exception ex) {}
-                }
-              
-                int returnCode = 0;
-                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
-                launcher.decorateByEnv(envs);
+                String res = output.toString("UTF-8");
+                System.out.println(res);
 
-                if(launcher.isUnix())
-                {                
-                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.sh", leroyhome, agentname).pwd(leroyhome).stdout(output).join();
-                }
-                else
-                    returnCode = launcher.launch().envs(Functions.getEnvVars()).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.bat" , leroyhome, leroyhome+"/controller.exe" ).join();
-                
-                int returnCode1 = 0;
-              
-                if(returnCode==0)
-                {
-                    return FormValidation.ok("Success");
-                }
-                
-                return FormValidation.error("Failed to add agent" + output);
-                
             } catch (Exception e) {
-                return FormValidation.error("Client error : "+e.getMessage());
+                e.printStackTrace();
             }
-            
         }
-        
-         public FormValidation doUpdateAgent(@QueryParameter("architecture") String architecture, 
-                 @QueryParameter("leroyhome") String leroyhome) 
+
+        private String quote(String str) {
+            return "\"" + str + "\"";
+        }
+
+        public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyHome,
+                                         @QueryParameter("agentName") final String agentName,
+                                         @QueryParameter("agentPlatform") final String agentPlatform,
+                                         @QueryParameter("agentLockerpath") final String agentLockerpath,
+                                         @QueryParameter("sshHost") final String sshHost,
+                                         @QueryParameter("sshPort") final String sshPort,
+                                         @QueryParameter("sshUser") final String sshUser,
+                                         @QueryParameter("sshPass") final String sshPass,
+                                         @QueryParameter("sshDest") final String sshDest,
+                                         @QueryParameter("sshInstall") final String sshInstall)
                 throws IOException, ServletException {
-                 ByteArrayOutputStream output = new ByteArrayOutputStream();
-               
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+            if (StringUtils.isEmpty(agentName)) {
+                return FormValidation.error("Please provide a name of the agent");
+            }
+
             try {
                 Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-//                Writer writer = null;
-//
-//                try {
-//                    writer = new BufferedWriter(new OutputStreamWriter(
-//                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
-//                    if(launcher.isUnix())
-//                        writer.write("1\n"+agentname+"\n");
-//                       
-//                    else
-//                        writer.write("3\r\n"+agentname+"\r\n");
-//                } catch (IOException ex) {
-//                  return FormValidation.error("error creating file: "+ex.getMessage());
-//                } finally {
-//                   try {writer.close();} catch (Exception ex) {}
-//                }
-              
                 int returnCode = 0;
-                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
-                launcher.decorateByEnv(envs);
-
-                if(launcher.isUnix())
-                {    
-//                    if(architecture=="86")
-//                        returnCode = launcher.launch().cmds("wget", "https://dl.dropboxusercontent.com/u/250424534/leroy_Linux-i686.tgz").pwd(leroyhome).stdout(output).join();
-//                    else
-//                        returnCode = launcher.launch().cmds("wget", "https://dl.dropboxusercontent.com/u/250424534/leroy_Linux-x86_64.tgz").pwd(leroyhome).stdout(output).join();
-
-                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/updateleroy.sh", leroyhome, architecture, Hudson.getInstance().getRootDir() + "/plugins/leroy/").pwd(Hudson.getInstance().getRootDir() + "/plugins/leroy/").stdout(output).join();
-                            
+                List<String> cmds = new ArrayList<String>();
+                cmds.add(leroyHome + "/controller");
+                cmds.add("--addagent");
+                cmds.add("--agent-name");
+                cmds.add(agentName);
+                cmds.add("--agent-platform");
+                cmds.add(agentPlatform);
+                if (!StringUtils.isEmpty(agentLockerpath)) {
+                    cmds.add("--agent-lockerpath");
+                    cmds.add(agentLockerpath);
                 }
-                else
-                {
-             
-                    returnCode = launcher.launch().cmds("powershell.exe","-ExecutionPolicy", "remotesigned" ,Hudson.getInstance().getRootDir() + "/plugins/leroy/"+"/downloader.ps1" , "./leroy_Win64.zip", "https://dl.dropboxusercontent.com/u/250424534/leroy_Win64.zip" ).pwd(Hudson.getInstance().getRootDir() + "/plugins/leroy/").stdout(output).join();       
-                                       
-                    if(returnCode==0)
-                    {
-                        String templeroyhome = leroyhome;
-                        if(leroyhome.charAt(leroyhome.length()-1)=='/' ||leroyhome.charAt(leroyhome.length()-1)=='\\')
-                            templeroyhome = leroyhome.substring(0, leroyhome.length()-1);
-                        
-                        returnCode = launcher.launch().cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/updateleroy.bat", templeroyhome ).pwd(Hudson.getInstance().getRootDir() + "/plugins/leroy/").stdout(output).join();       
+                returnCode = launcher.launch().pwd(leroyHome).envs(Functions.getEnvVars()).cmds(cmds).stdout(output).join();
+
+                if (returnCode != 0) {
+                    return FormValidation.error("Cannot add agent " + output);
+                }
+
+                // if we need to install it via ssh
+                if ("true".equalsIgnoreCase(sshInstall)) {
+                    String extension = ".zip";
+                    if (launcher.isUnix()) {
+                        extension = ".tgz";
                     }
+                    String bundleName = agentName + "-" + agentPlatform + extension;
+                    returnCode = launcher.launch().envs(Functions.getEnvVars()).pwd(leroyHome)
+                            .cmds(leroyHome + "/controller"
+                                    , "--ssh-install", bundleName
+                                    , "--ssh-host", sshHost
+                                    , "--ssh-port", sshPort
+                                    , "--ssh-user", sshUser
+                                    , "--ssh-pass", sshPass
+                                    , "--ssh-destdir", sshDest).stdout(output).join();
                 }
-                    
-                int returnCode1 = 0;
-              
-                if(returnCode == 0)
-                {
+
+                if (returnCode == 0) {
                     return FormValidation.ok("Success");
                 }
-                
-                return FormValidation.error("Failed to add agent" + output);
-                
+                return FormValidation.error("Failed to install agent via SSH" + output);
+
             } catch (Exception e) {
-                return FormValidation.error("Client error : "+e.getMessage());
+                return FormValidation.error("Client error : " + e.getMessage());
             }
-            
         }
-        
-        
-        public FormValidation doAddRole(@QueryParameter("agentname") String agentname, 
-                @QueryParameter("environmentname") final String environment, 
-                @QueryParameter("rolename") final String rolename,
-                @QueryParameter("leroyhome") final String leroyhome)
-                throws IOException, ServletException {
-                
-            String filepath = leroyhome + "/agents.xml";
-            agents =  XMLParser.getAgents(new File(filepath));
 
-            String filepath1 = leroyhome + "/environments/";
 
-            //get file names
-            List<String> results = new ArrayList<String>();
-            File[] files = new File(filepath1).listFiles();
+        public FormValidation doUpdateController(@QueryParameter("architecture") String architecture,
+                                            @QueryParameter("leroyhome") String leroyhome,
+                                            @QueryParameter("controllerVersion") String controllerVersion) {
+            System.out.println(architecture);
+            System.out.println(controllerVersion);
 
-            if(files.length > 0)
-            {
-                for (File file : files) {
-                    if (file.isFile()) {
-                        results.add(file.getName());
+            //get update file from server
+            try {
+                Update update = XMLParser.readUpdate();
+                if (update != null) {
+                    if (controllerVersion.equalsIgnoreCase(String.valueOf(update.getVersion()))) {
+                        return FormValidation.error("Controller has last version: '" + update.getVersion() + "'");
+                    }
+                    String binary = update.getBinaries().get(architecture);
+                    if (binary != null) {
+                        File archive = LeroyUtils.downloadFile(binary);
+                        LeroyUtils.unpack(archive, new File(leroyhome));
                     }
                 }
-
-                List<String> envs = new ArrayList<String>();
-                List<String> envsroles = new ArrayList<String>();
-
-                for(String fname : results)
-                {
-                    XMLParser.getEnvironment(new File(filepath1+fname));
-                    envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
-                    envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
-                    
-                    XMLParser.addRoles(new File(filepath1+fname), agentname, environment, rolename);
-                } 
-
-                envsroles.add("<NEW ROLE>");
-
-                environments = envs;
-                roles = envsroles;
+            } catch (Exception e) {
+                return FormValidation.error(e, "Error while updating the controller"); // temporatily show stacktrace on UI
             }
-            else
-            {
-                return FormValidation.error("No files in %LEROY_HOME%/enviroments/");
-            }           
-            return FormValidation.error("Client error : ");
-        
+            return FormValidation.ok("Controller is updated successfully");
         }
-         public FormValidation doCheckLeroyhome(@QueryParameter String value)
+
+        public FormValidation doCheckLeroyhome(@QueryParameter String value)
                 throws IOException, ServletException {
             if (value.length() == 0) {
                 return FormValidation.error("Please provide a path for leroy plugin");
             } else if (!canWrite(value)) {
                 return FormValidation.error("Cannot write to folder. Please check if folder exists/user has write permissions on this folder");
-            } else {
-                String filepath = value + "/agents.xml";
-                agents =  XMLParser.getAgents(new File(filepath));
-                
-                String filepath1 = value + "/environments/";
-
-                //get file names
-                List<String> results = new ArrayList<String>();
-                File[] files = new File(filepath1).listFiles();
-                
-                if(files!=null){
-                if(files.length > 0)
-                {
-                    for (File file : files) {
-                        if (file.isFile()) {
-                            results.add(file.getName());
-                        }
-                    }
-
-                    List<String> envs = new ArrayList<String>();
-                    List<String> envsroles = new ArrayList<String>();
-
-                    for(String fname : results)
-                    {
-                        //XMLParser.getEnvironment(new File(filepath1+fname));
-                        envs.addAll(XMLParser.getEnvironment(new File(filepath1+fname)));
-                        envsroles.addAll(XMLParser.getRoles(new File(filepath1+fname)));
-                    } 
-
-                    envsroles.add("<NEW ROLE>");
-
-                    environments = envs;
-                    roles = envsroles;
-                    }
-                    else
-                    {
-                        return FormValidation.error("No files in %LEROY_HOME%/enviroments/");
-                    }
-                }
             }
             return FormValidation.ok();
         }
+
+        // TODO implement
+        public FormValidation doCheckAgentName(@QueryParameter String value) {
+            if (StringUtils.isEmpty(value)) {
+                return FormValidation.error("Please provide a name of the agent");
+            }
+            return FormValidation.ok();
+        }
+
         public String getHelpPage() {
             // yes, I know this is a hack.
             ComputerSet object = Stapler.getCurrentRequest().findAncestorObject(ComputerSet.class);
-           
-            if (object != null) {                
+
+            if (object != null) {
                 // we're on a node configuration page, show show that help page
                 return "/help/system-config/nodeEnvironmentVariables.html";
             } else {
@@ -528,14 +470,12 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 return "/help/system-config/globalEnvironmentVariables.html";
             }
         }
-        
-       
-        
+
+
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
-           
             save();
-            return super.configure(req,formData);
+            return super.configure(req, formData);
         }
 
         private boolean canWrite(String path) {

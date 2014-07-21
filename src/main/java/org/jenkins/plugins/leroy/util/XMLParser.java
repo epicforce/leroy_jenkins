@@ -1,311 +1,261 @@
 package org.jenkins.plugins.leroy.util;
 
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.DocumentBuilder;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.leroy.beans.Update;
+import org.jenkins.plugins.leroy.jaxb.JaxbUtils;
+import org.jenkins.plugins.leroy.jaxb.ListWrapper;
+import org.jenkins.plugins.leroy.jaxb.beans.*;
 import org.w3c.dom.Document;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.Node;
 import org.w3c.dom.Element;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
-import java.util.ArrayList;
-import java.util.List;
-import javax.xml.parsers.ParserConfigurationException;
-import javax.xml.transform.OutputKeys;
-import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerException;
-import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.dom.DOMSource;
-import javax.xml.transform.stream.StreamResult;
-import org.w3c.dom.Attr;
-import org.w3c.dom.NamedNodeMap;
-import org.xml.sax.SAXException;
- 
-public class XMLParser {
- 
-    public static void main(String argv[]){
-        getAgents(new File(argv[0]));
-    }
-    
-  public static List<String> getAgents(File fXmlFile) {
- 
-    try {
-        List<String> agents = new ArrayList<String>();
-	//File fXmlFile = new File("/Users/mkyong/staff.xml");
-	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	Document doc = dBuilder.parse(fXmlFile);
- 
-	doc.getDocumentElement().normalize();
- 
-	NodeList nList = doc.getElementsByTagName("agent");
-  
-	for (int temp = 0; temp < nList.getLength(); temp++) {
- 
-		Node nNode = nList.item(temp);
-                Element eElement = (Element) nNode;
-                agents.add(eElement.getAttribute("name"));
-	}
-        return agents;
-    } catch (Exception e) {
-	e.printStackTrace();
-    }
-    return null;
-  }
-   public static List<String> getRoles(File fXmlFile) {
- 
-    try {
-        List<String> agents = new ArrayList<String>();
-	//File fXmlFile = new File("/Users/mkyong/staff.xml");
-	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	Document doc = dBuilder.parse(fXmlFile);
- 
-	doc.getDocumentElement().normalize();
- 
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
-	NodeList nList = doc.getElementsByTagName("agent");
- 
-	for (int temp = 0; temp < nList.getLength(); temp++) {
- 
-		Node nNode = nList.item(temp);
-                Element eElement = (Element) nNode;
-                //NodeList nList = eElement.getElementsByTagName("environments");
-                agents.add(eElement.getAttribute("roles"));
-	}
-        return agents;
-    } catch (Exception e) {
-	e.printStackTrace();
+import javax.xml.bind.JAXBContext;
+import javax.xml.bind.JAXBException;
+import javax.xml.bind.Marshaller;
+import javax.xml.bind.Unmarshaller;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.InputStream;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+public class XMLParser {
+
+    // update.xml tags
+    public static final String UP_BINARY_TAG_SUFF = "_binary";
+    public static final String UP_VERSION_TAG = "version";
+    public static final String UP_UPDATE_TAG = "update";
+
+    //controller.xml tags
+    public static final String CO_CONTROLLER_TAG = "controller";
+    public static final String CO_TIMEOUT_ATTR = "agentsCheckinTimeout";
+    public static final String CO_HOST_ATTR = "host";
+    public static final String CO_BIND_ATTR = "bind";
+    public static final String CO_PORT_ATTR = "port";
+    public static final String CO_LOGFILE_ATTR = "logFile";
+    public static final String CO_LOGLEVEL_ATTR = "logLevel";
+
+
+    public static void main(String argv[]) {
+        Update up = readUpdate();
+        readController("C:\\leroy\\controller.xml");
+
     }
-    return null;
-  }
-  
-   public static List<String> getEnvironment(File fXmlFile) {
- 
-    try {
-        List<String> agents = new ArrayList<String>();
-	//File fXmlFile = new File("/Users/mkyong/staff.xml");
-	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	Document doc = dBuilder.parse(fXmlFile);
- 
-	doc.getDocumentElement().normalize();
- 
-	NodeList nList = doc.getElementsByTagName("environment");
- 
-	for (int temp = 0; temp < nList.getLength(); temp++) {
- 
-		Node nNode = nList.item(temp);
-                Element eElement = (Element) nNode;
-                agents.add(eElement.getAttribute("name"));
-	}
-        return agents;
-    } catch (Exception e) {
-	e.printStackTrace();
-    }
-    return null;
-  }
- 
-   public static List<String> addRoles(File fXmlFile, String agentname, String enviromentname, String rolename) {
- 
-    try {
-        List<String> agents = new ArrayList<String>();
-	//File fXmlFile = new File("/Users/mkyong/staff.xml");
-	DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-	DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
-	Document doc = dBuilder.parse(fXmlFile);
- 
-	//doc.getDocumentElement().normalize();
- 	NodeList nList = doc.getElementsByTagName("environment");
- 
-	for (int temp = 0; temp < nList.getLength(); temp++) {
+
+    public static List<String> getEnvironment(File fXmlFile) {
+
+        try {
+            List<String> agents = new ArrayList<String>();
+            //File fXmlFile = new File("/Users/mkyong/staff.xml");
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(fXmlFile);
+
+            doc.getDocumentElement().normalize();
+
+            NodeList nList = doc.getElementsByTagName("environment");
+
+            for (int temp = 0; temp < nList.getLength(); temp++) {
+
                 Node nNode = nList.item(temp);
                 Element eElement = (Element) nNode;
-                
-                if(eElement.getAttribute("name").equalsIgnoreCase(enviromentname)){
+                agents.add(eElement.getAttribute("name"));
+            }
+            return agents;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return null;
+    }
+
+    public static List<String> addRoles(File fXmlFile, String agentname, String enviromentname, String rolename) {
+
+        try {
+            List<String> agents = new ArrayList<String>();
+            //File fXmlFile = new File("/Users/mkyong/staff.xml");
+            DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+            DocumentBuilder dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(fXmlFile);
+
+            //doc.getDocumentElement().normalize();
+            NodeList nList = doc.getElementsByTagName("environment");
+
+            for (int temp = 0; temp < nList.getLength(); temp++) {
+                Node nNode = nList.item(temp);
+                Element eElement = (Element) nNode;
+
+                if (eElement.getAttribute("name").equalsIgnoreCase(enviromentname)) {
                     NodeList nList1 = eElement.getElementsByTagName("agent");
-                    for(int i = 0; i < nList1.getLength(); i++)
-                    {
+                    for (int i = 0; i < nList1.getLength(); i++) {
                         Node nNode1 = nList1.item(temp);
                         Element eElement1 = (Element) nNode1;
                         agents.add(eElement1.getAttribute("roles"));
                     }
                 }
-        }
-        return agents;
-    } catch (Exception e) {
-	e.printStackTrace();
-    }
-    return null;
-  }
- 
-   public static void createConfigurtionXML(String path) throws FileAlreadyExistsException{
-       File configfile = new File(path);
-       
-       if(configfile.exists()){
-           throw new FileAlreadyExistsException(path);
-       }
-       
-       try {
-            DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-
-            // root elements
-            Document doc = docBuilder.newDocument();
-            Element rootElement = doc.createElement("Environments");
-            doc.appendChild(rootElement);
-
-            // write the content into xml file
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(configfile);
-
-            // Output to console for testing
-            // StreamResult result = new StreamResult(System.out);
-
-            transformer.transform(source, result);
-
-            System.out.println("File saved!");
- 
-	  } catch (ParserConfigurationException pce) {
-		pce.printStackTrace();
-	  } catch (TransformerException tfe) {
-		tfe.printStackTrace();
-	  }
-   }
-   
-   public static boolean addConfigurationElement(File configxml, String name, String value)
-   {
-       DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-       DocumentBuilder dBuilder;
-       try {
-            dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(configxml);
-            doc.getDocumentElement().normalize();
-            
-            NodeList envnodes = doc.getElementsByTagName("Environment");
-            Node env = null;
-            //loop for each employee
-            for(int i=0; i<envnodes.getLength();i++){
-                env = envnodes.item(i);
-                NamedNodeMap attr = env.getAttributes();
-		Node nodeAttr = attr.getNamedItem("id");
-                
-//		nodeAttr.setTextContent("2");
-                String temp = nodeAttr.getNodeValue();
-                if(nodeAttr.getNodeValue().equals(name))
-                {
-                    env.setTextContent(value);
-                    
-//                  doc.getElementsByTagName("Environments").item(0).replaceChild(env, envnodes.item(i));
-                    TransformerFactory transformerFactory = TransformerFactory.newInstance();
-                    Transformer transformer = transformerFactory.newTransformer();
-                    DOMSource source = new DOMSource(doc);
-                    StreamResult result = new StreamResult(configxml);
-                    transformer.transform(source, result);
-                    return true;
-                }    
-                  
-                //Node name = emp.getElementsByTagName("name").item(0).getFirstChild();
-                //name.setNodeValue(name.getNodeValue().toUpperCase());
             }
-            
-            // staff elements
-            Element newenv = doc.createElement("Environment");
-            
-            Attr attr = doc.createAttribute("id");
-            attr.setValue(name);
-            newenv.setAttributeNode(attr);
-            newenv.appendChild(doc.createTextNode(value));
-            doc.getElementsByTagName("Environments").item(0).appendChild(newenv);
-             
-            // write the content into xml file
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(configxml);
-            transformer.transform(source, result);
-           // System.out.println("XML file updated successfully");
-            return true;
-        } catch (SAXException e) { 
-            e.printStackTrace();
-        } catch (TransformerException e) { 
-            e.printStackTrace();
-        } catch (IOException e) { 
-            e.printStackTrace();
-        } catch (ParserConfigurationException e) { 
-            e.printStackTrace();
-        }
-        return false;
-   }
-   
-   public static boolean hasConfigurationElement(File configxml, String name)
-   {
-       DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-       DocumentBuilder dBuilder;
-       try {
-            dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(configxml);
-            doc.getDocumentElement().normalize();
-            
-            NodeList envnodes = doc.getElementsByTagName("Environment");
-            Node env = null;
-            //loop for each employee
-            for(int i=0; i<envnodes.getLength();i++){
-                env = envnodes.item(i);
-                NamedNodeMap attr = env.getAttributes();
-		Node nodeAttr = attr.getNamedItem("id");
-                
-                if(nodeAttr.getNodeValue().equals(name))
-                {
-                      return true;
-                }    
-            }
-            return false;
-        } catch (SAXException e) { 
-            e.printStackTrace();
-        }  catch (IOException e) { 
-            e.printStackTrace();
-        } catch (ParserConfigurationException e) { 
-            e.printStackTrace();
-        }
-        return false;
-   }
-   
-   public static String getConfigurationElement(File configxml, String name)
-   {
-       DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
-       DocumentBuilder dBuilder;
-       try {
-            dBuilder = dbFactory.newDocumentBuilder();
-            Document doc = dBuilder.parse(configxml);
-            doc.getDocumentElement().normalize();
-            
-            NodeList envnodes = doc.getElementsByTagName("Environment");
-            Node env = null;
-            //loop for each employee
-            for(int i=0; i<envnodes.getLength();i++){
-                env = envnodes.item(i);
-                NamedNodeMap attr = env.getAttributes();
-		Node nodeAttr = attr.getNamedItem("id");
-                
-                if(nodeAttr.getNodeValue().equals(name))
-                {
-                      return env.getTextContent();
-                }    
-            }
-            return null;
-        } catch (SAXException e) { 
-            e.printStackTrace();
-        }  catch (IOException e) { 
-            e.printStackTrace();
-        } catch (ParserConfigurationException e) { 
+            return agents;
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
-   }
+    }
+
+    public static Update readUpdate() {
+
+        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder dBuilder;
+        Update update = null;
+        InputStream is = null;
+        try {
+            URL updateFile = new URL(Constants.UPDATE_XML);
+            is = new BufferedInputStream(updateFile.openStream());
+            dBuilder = dbFactory.newDocumentBuilder();
+            Document doc = dBuilder.parse(is);
+            Node updateNode = XMLHandler.getSubNode(doc, UP_UPDATE_TAG);
+
+            // get version
+            Node versionNode = XMLHandler.getSubNode(updateNode, UP_VERSION_TAG);
+            int version = Integer.valueOf(XMLHandler.getNodeValue(versionNode));
+
+            // get binaries nodes
+            Map<String, String> binariesMap = new LinkedHashMap<String, String>();
+            String binaryRegex = "(.*)_binary";
+            List<Node> binNodes = XMLHandler.getNodesByRegex(updateNode, binaryRegex);
+
+            for (Node node : binNodes) {
+                String nodeName = node.getNodeName();
+                String name = nodeName.substring(0, nodeName.indexOf(UP_BINARY_TAG_SUFF));
+                String url = XMLHandler.getNodeValue(node);
+                binariesMap.put(name, url);
+            }
+
+            update = new Update(version, binariesMap);
+
+        } catch (Exception e) {
+            e.printStackTrace(); //TODO handle
+        } finally {
+            IOUtils.closeQuietly(is);
+        }
+
+        return update;
+    }
+
+
+//    public static Controller readController(String controllerXml) {
+//        DocumentBuilderFactory dbFactory = DocumentBuilderFactory.newInstance();
+//        DocumentBuilder dBuilder;
+//        Controller controller = new Controller();
+//        try {
+//            dBuilder = dbFactory.newDocumentBuilder();
+//            Document doc = dBuilder.parse(controllerXml);
+//            doc.getDocumentElement().normalize();
+//
+//            // get controller
+//            Node contollerNode = XMLHandler.getSubNode(doc, CO_CONTROLLER_TAG);
+//            if (contollerNode != null) {
+//
+//                Map<String, String> attrs = XMLHandler.getNodeAttributesWithValues(contollerNode);
+//                for (Map.Entry<String, String> attr : attrs.entrySet()) {
+//                    String name = attr.getKey();
+//                    if (CO_BIND_ATTR.equalsIgnoreCase(name)) {
+//                        controller.setBind(name);
+//                    } else if (CO_HOST_ATTR.equalsIgnoreCase(name)) {
+//
+//                    }
+//                }
+//
+//            }
+//
+//        } catch (Exception e) {
+//
+//        }
+//        return controller;
+//    }
+
+    public static ControllerBean readController(String controllerXml) {
+        try {
+            JAXBContext jc = JAXBContext.newInstance(ControllerBean.class);
+            Unmarshaller u = jc.createUnmarshaller();
+            ControllerBean c = (ControllerBean)u.unmarshal(new File(controllerXml));
+            return c;
+        } catch (JAXBException e) {
+            e.printStackTrace(); // TODO handle
+        }
+        return null;
+    }
+
+    public static void saveController(ControllerBean controller, String controllerXml) {
+        try {
+            JAXBContext jc = JAXBContext.newInstance(ControllerBean.class);
+            Marshaller marshaller = jc.createMarshaller();
+            JaxbUtils.replaceEmptyStringFieldsToNull(controller);
+            marshaller.marshal(controller, new File(controllerXml));
+        } catch (Exception e) {
+            e.printStackTrace(); // TODO handle
+        }
+    }
+
+    public static List<EnvironmentBean> readEnvironments(String xmlFile) {
+        List<EnvironmentBean> result = new ArrayList<EnvironmentBean>();
+        if (!StringUtils.isEmpty(xmlFile) && Files.exists(Paths.get(xmlFile))) {
+            try {
+                JAXBContext jc = JAXBContext.newInstance(ListWrapper.class, EnvironmentBean.class, AgentInEnvironmentBean.class, AgentsInEnvironmentBean.class);
+                Unmarshaller unmarshaller = jc.createUnmarshaller();
+                result = JaxbUtils.unmarshal(unmarshaller, EnvironmentBean.class, xmlFile);
+            } catch (JAXBException e) {
+                e.printStackTrace(); // TODO handle
+            }
+        }
+        return result;
+    }
+
+    public static void saveEnvironments(List<EnvironmentBean> envs, String xmlFile) {
+        try {
+            JAXBContext jc = JAXBContext.newInstance(ListWrapper.class, EnvironmentBean.class, AgentInEnvironmentBean.class, AgentsInEnvironmentBean.class);
+            Marshaller marshaller = jc.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+            JaxbUtils.marshal(marshaller, envs, "environments", xmlFile);
+        } catch (JAXBException e) {
+            e.printStackTrace(); // TODO handle
+        }
+    }
+
+    // read <LEROY)_HOME>/agents.xml
+    public static List<AgentBean> readAgents(String xmlFile) {
+        List<AgentBean> result = new ArrayList<AgentBean>();
+        try {
+            JAXBContext jc = JAXBContext.newInstance(ListWrapper.class, AgentBean.class);
+            Unmarshaller unmarshaller = jc.createUnmarshaller();
+            result = JaxbUtils.unmarshal(unmarshaller, AgentBean.class, xmlFile);
+        } catch (JAXBException e) {
+            e.printStackTrace(); // TODO handle
+        }
+        return result;
+    }
+
+    // write <LEROY_HOME>/agents.xml
+    public static void saveAgents(List<AgentBean> agentBeans, String xmlFile) {
+        try {
+            JAXBContext jc = JAXBContext.newInstance(ListWrapper.class, AgentBean.class);
+            Marshaller marshaller = jc.createMarshaller();
+            marshaller.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
+            for (AgentBean agentBean : agentBeans) {
+                JaxbUtils.replaceEmptyStringFieldsToNull(agentBean);
+            }
+            JaxbUtils.marshal(marshaller, agentBeans, "agents", xmlFile);
+        } catch (Exception e) {
+            e.printStackTrace(); // TODO handle
+        }
+    }
+
 
 }

@@ -24,100 +24,82 @@
  */
 package org.jenkins.plugins.leroy;
 
-import hudson.EnvVars;
-import hudson.Functions;
+import com.jayway.jsonpath.JsonPath;
 import hudson.Util;
-import hudson.model.AbstractItem;
-import hudson.model.AbstractProject;
-import hudson.model.Action;
-import hudson.model.BuildableItemWithBuildWrappers;
-import hudson.model.ChoiceParameterDefinition;
-import hudson.model.Computer;
-import hudson.model.DependencyGraph;
-import hudson.model.Descriptor;
+import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.model.Item;
-import hudson.model.ItemGroup;
-import hudson.model.JobProperty;
-import hudson.model.JobPropertyDescriptor;
-import hudson.model.ParameterDefinition;
-import hudson.model.ParametersDefinitionProperty;
-import hudson.model.ResourceActivity;
-import hudson.model.SCMedItem;
-import hudson.model.Saveable;
-import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
-import hudson.tasks.ArtifactArchiver;
-import hudson.tasks.BuildStep;
-import hudson.tasks.BuildWrapper;
-import hudson.tasks.BuildWrappers;
-import hudson.tasks.Builder;
-import hudson.tasks.Fingerprinter;
-import hudson.tasks.Publisher;
-import hudson.tasks.Maven;
-import hudson.tasks.Maven.ProjectWithMaven;
+import hudson.tasks.*;
 import hudson.tasks.Maven.MavenInstallation;
+import hudson.tasks.Maven.ProjectWithMaven;
 import hudson.triggers.Trigger;
 import hudson.util.DescribableList;
 import net.sf.json.JSONObject;
-import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import jenkins.model.Jenkins;
 
 /**
  * Buildable software project.
  *
  * @author Yunus Dawji
  */
-public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B extends ConfigurationBuild<P,B>>
-     extends AbstractProject<P,B>  implements SCMedItem, Saveable, ProjectWithMaven, BuildableItemWithBuildWrappers {
+public abstract class ConfigurationProject<P extends ConfigurationProject<P, B>, B extends ConfigurationBuild<P, B>>
+        extends AbstractProject<P, B> implements SCMedItem, Saveable, ProjectWithMaven, BuildableItemWithBuildWrappers {
 
     /**
      * List of active {@link Builder}s configured for this project.
      */
-    private volatile DescribableList<Builder,Descriptor<Builder>> builders;
-    private static final AtomicReferenceFieldUpdater<ConfigurationProject,DescribableList> buildersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class,DescribableList.class,"builders");
+    private volatile DescribableList<Builder, Descriptor<Builder>> builders;
+    private static final AtomicReferenceFieldUpdater<ConfigurationProject, DescribableList> buildersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class, DescribableList.class, "builders");
 
     /**
      * List of active {@link Publisher}s configured for this project.
      */
-    private volatile DescribableList<Publisher,Descriptor<Publisher>> publishers;
-    private static final AtomicReferenceFieldUpdater<ConfigurationProject,DescribableList> publishersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class,DescribableList.class,"publishers");
+    private volatile DescribableList<Publisher, Descriptor<Publisher>> publishers;
+    private static final AtomicReferenceFieldUpdater<ConfigurationProject, DescribableList> publishersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class, DescribableList.class, "publishers");
 
     /**
      * List of active {@link BuildWrapper}s configured for this project.
      */
-    private volatile DescribableList<BuildWrapper,Descriptor<BuildWrapper>> buildWrappers;
-    private static final AtomicReferenceFieldUpdater<ConfigurationProject,DescribableList> buildWrappersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class,DescribableList.class,"buildWrappers");
+    private volatile DescribableList<BuildWrapper, Descriptor<BuildWrapper>> buildWrappers;
+    private static final AtomicReferenceFieldUpdater<ConfigurationProject, DescribableList> buildWrappersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(ConfigurationProject.class, DescribableList.class, "buildWrappers");
 
     /**
      * Creates a new project.
      */
-    public ConfigurationProject(ItemGroup parent,String name) throws IOException {
-        super(parent,name);
-        
+    public ConfigurationProject(ItemGroup parent, String name) throws IOException {
+        super(parent, name);
+
     }
 
-   
+    @Override
+    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
+
+        super.doConfigSubmit(req, rsp);
+        // set assigned node
+        JSONObject json = req.getSubmittedForm();
+        String jsonStr = json.toString();
+        String leroyBuilderJson = LeroyBuildHelper.getLeroyConfigurationBuilderJSON(jsonStr);
+        String leroyNode = JsonPath.read(leroyBuilderJson, "$.leroyNode");
+        String assignedNodeName = leroyNode == null ? "" : leroyNode;
+        Node n = LeroyUtils.findNodeByName(assignedNodeName);
+        if (n != null) {
+            setAssignedNode(n);
+        }
+        save();
+    }
+
     public void onLoad(ItemGroup<? extends Item> parent, String name) throws IOException {
-        super.onLoad((ItemGroup)parent, name);
+        super.onLoad((ItemGroup) parent, name);
         getBuildersList().setOwner(this);
         getPublishersList().setOwner(this);
         getBuildWrappersList().setOwner(this);
@@ -129,8 +111,8 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
 
     public List<Builder> getBuilders() {
         boolean check = false;
-        List<Builder> temp =  getBuildersList().toList();
-        List<Builder> builders =  new ArrayList<Builder>();
+        List<Builder> temp = getBuildersList().toList();
+        List<Builder> builders = new ArrayList<Builder>();
         for (Builder builder : temp) {
             if (builder instanceof LeroyConfigurationBuilder) {
                 check = true;
@@ -138,61 +120,41 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
             builders.add(builder);
         }
         if (!check) {
-            builders.add(new LeroyConfigurationBuilder());
+            builders.add(new LeroyConfigurationBuilder(""));
         }
         return builders;
     }
 
     /**
      * @deprecated as of 1.463
-     *      We will be soon removing the restriction that only one instance of publisher is allowed per type.
-     *      Use {@link #getPublishersList()} instead.
+     * We will be soon removing the restriction that only one instance of publisher is allowed per type.
+     * Use {@link #getPublishersList()} instead.
      */
-    public Map<Descriptor<Publisher>,Publisher> getPublishers() {
+    public Map<Descriptor<Publisher>, Publisher> getPublishers() {
         return getPublishersList().toMap();
     }
 
-    public DescribableList<Builder,Descriptor<Builder>> getBuildersList() {
+    public DescribableList<Builder, Descriptor<Builder>> getBuildersList() {
         if (builders == null) {
-            buildersSetter.compareAndSet(this,null,new DescribableList<Builder,Descriptor<Builder>>(this));
+            buildersSetter.compareAndSet(this, null, new DescribableList<Builder, Descriptor<Builder>>(this));
         }
         return builders;
     }
-    
-    public DescribableList<Publisher,Descriptor<Publisher>> getPublishersList() {
-        if (publishers == null) {
-            publishersSetter.compareAndSet(this,null,new DescribableList<Publisher,Descriptor<Publisher>>(this));
-        }
-        
-        ArtifactArchiver artifactArchiver = new ArtifactArchiver("**","",false);
-//        List<Publisher> temp =  getPublishersList().toList();
-        ListIterator<Publisher> ite = publishers.listIterator();
-        boolean check = false;
-  
-        while(ite.hasNext())
-        {
-            Publisher ele = ite.next();
-            
-            
-            if(ele instanceof ArtifactArchiver)
-                check = true;
 
-            
+    public DescribableList<Publisher, Descriptor<Publisher>> getPublishersList() {
+        if (publishers == null) {
+            publishersSetter.compareAndSet(this, null, new DescribableList<Publisher, Descriptor<Publisher>>(this));
         }
-        
-        if(!check)
-            publishers.add((Publisher)artifactArchiver);
-        
         return publishers;
     }
 
-    public Map<Descriptor<BuildWrapper>,BuildWrapper> getBuildWrappers() {
+    public Map<Descriptor<BuildWrapper>, BuildWrapper> getBuildWrappers() {
         return getBuildWrappersList().toMap();
     }
 
     public DescribableList<BuildWrapper, Descriptor<BuildWrapper>> getBuildWrappersList() {
         if (buildWrappers == null) {
-            buildWrappersSetter.compareAndSet(this,null,new DescribableList<BuildWrapper,Descriptor<BuildWrapper>>(this));
+            buildWrappersSetter.compareAndSet(this, null, new DescribableList<BuildWrapper, Descriptor<BuildWrapper>>(this));
         }
         return buildWrappers;
     }
@@ -202,9 +164,9 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
         final Set<ResourceActivity> activities = new HashSet<ResourceActivity>();
 
         activities.addAll(super.getResourceActivities());
-        activities.addAll(Util.filter(getBuildersList(),ResourceActivity.class));
-        activities.addAll(Util.filter(getPublishersList(),ResourceActivity.class));
-        activities.addAll(Util.filter(getBuildWrappersList(),ResourceActivity.class));
+        activities.addAll(Util.filter(getBuildersList(), ResourceActivity.class));
+        activities.addAll(Util.filter(getPublishersList(), ResourceActivity.class));
+        activities.addAll(Util.filter(getBuildWrappersList(), ResourceActivity.class));
 
         return activities;
     }
@@ -213,7 +175,7 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
      * Adds a new {@link BuildStep} to this {@link Project} and saves the configuration.
      *
      * @deprecated as of 1.290
-     *      Use {@code getPublishersList().add(x)}
+     * Use {@code getPublishersList().add(x)}
      */
     public void addPublisher(Publisher buildStep) throws IOException {
         getPublishersList().add(buildStep);
@@ -223,7 +185,7 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
      * Removes a publisher from this project, if it's active.
      *
      * @deprecated as of 1.290
-     *      Use {@code getPublishersList().remove(x)}
+     * Use {@code getPublishersList().remove(x)}
      */
     public void removePublisher(Descriptor<Publisher> descriptor) throws IOException {
         getPublishersList().remove(descriptor);
@@ -231,80 +193,40 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P,B>,B
 
     public Publisher getPublisher(Descriptor<Publisher> descriptor) {
         for (Publisher p : getPublishersList()) {
-            if(p.getDescriptor()==descriptor)
+            if (p.getDescriptor() == descriptor)
                 return p;
         }
         return null;
     }
 
     protected void buildDependencyGraph(DependencyGraph graph) {
-        getPublishersList().buildDependencyGraph(this,graph);
-        getBuildersList().buildDependencyGraph(this,graph);
-        getBuildWrappersList().buildDependencyGraph(this,graph);
+        getPublishersList().buildDependencyGraph(this, graph);
+        getBuildersList().buildDependencyGraph(this, graph);
+        getBuildWrappersList().buildDependencyGraph(this, graph);
     }
 
     @Override
     public boolean isFingerprintConfigured() {
-        return getPublishersList().get(Fingerprinter.class)!=null;
+        return getPublishersList().get(Fingerprinter.class) != null;
     }
 
     public MavenInstallation inferMavenInstallation() {
         Maven m = getBuildersList().get(Maven.class);
-        if (m!=null)    return m.getMaven();
+        if (m != null) return m.getMaven();
         return null;
     }
 
-//
-//
-// actions
-//
-//
     @Override
-    protected void submit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
-        super.submit(req,rsp);
+    protected void submit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {
+        super.submit(req, rsp);
 
         JSONObject json = req.getSubmittedForm();
 
-        getBuildWrappersList().rebuild(req,json, BuildWrappers.getFor(this));
-        getBuildersList().rebuildHetero(req,json, Builder.all(), "builder");
+        getBuildWrappersList().rebuild(req, json, BuildWrappers.getFor(this));
+        getBuildersList().rebuildHetero(req, json, Builder.all(), "builder");
         getPublishersList().rebuildHetero(req, json, Publisher.all(), "publisher");
     }
 
-    @Override
-    public void doConfigSubmit( StaplerRequest req, StaplerResponse rsp ) throws IOException, ServletException, FormException {
-        
-        save();
-        super.doConfigSubmit(req,rsp);
-        
-        //set node
-        Jenkins jenkins = Jenkins.getInstance();
-        Computer[] computers = jenkins.getComputers();
-
-        for(int i = 0; i < computers.length; i++)
-        {
-            EnvVars envs = null; 
-            try {
-                envs = computers[i].buildEnvironment(TaskListener.NULL);
-                String name = computers[i].getName();
-                if(envs.containsKey(Constants.IS_LEROY_NODE))
-                {    
-                    setAssignedNode(computers[i].getNode());
-                }            
-
-            } catch (InterruptedException ex) {
-                Logger.getLogger(NewProject.class.getName()).log(Level.SEVERE, null, ex);
-            }
-
-            
-
-        }
-
-        // notify the queue as the project might be now tied to different node
-        Jenkins.getInstance().getQueue().scheduleMaintenance();
-        // this is to reflect the upstream build adjustments done above
-        Jenkins.getInstance().rebuildDependencyGraphAsync();
-    }
-    
     @Override
     protected List<Action> createTransientActions() {
         List<Action> r = super.createTransientActions();

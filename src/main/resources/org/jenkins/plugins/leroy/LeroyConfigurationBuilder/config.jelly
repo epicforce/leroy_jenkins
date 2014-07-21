@@ -1,5 +1,17 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-<!--  
+
+    <!-- Leroy Node field -->
+    <f:block>
+        <st:nbsp/>
+    </f:block>
+
+    <f:block>
+        <f:entry title="${%Leroy Node}" field="leroyNode">
+            <f:select />
+        </f:entry>
+    </f:block>
+
+    <!--
   <f:section title="Environment Settings">
     <f:block>
         <f:entry title="LEROY_HOME" field="leroyhome" >
@@ -39,4 +51,6 @@
 
         </f:block>  
   </f:section>-->
+
+
 </j:jelly>  

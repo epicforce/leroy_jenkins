@@ -6,151 +6,59 @@ package org.jenkins.plugins.leroy;
 
 import hudson.Extension;
 import hudson.FilePath;
-import hudson.Functions;
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.ChoiceParameterDefinition;
-import hudson.model.Hudson;
-import hudson.model.ItemGroup;
-import hudson.model.JobPropertyDescriptor;
-import hudson.model.ParameterDefinition;
-import hudson.model.ParametersDefinitionProperty;
-import hudson.model.StreamBuildListener;
-import hudson.model.TaskListener;
-import hudson.model.TopLevelItem;
+import hudson.model.*;
 import hudson.scm.SCM;
-import hudson.util.FormValidation;
-import hudson.util.ListBoxModel;
-import java.io.BufferedWriter;
+import jenkins.model.Jenkins;
+import net.sf.json.JSONObject;
+import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
+import org.kohsuke.accmod.Restricted;
+import org.kohsuke.accmod.restrictions.NoExternalUse;
+import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.StaplerResponse;
+import org.kohsuke.stapler.bind.JavaScriptMethod;
+
+import javax.servlet.ServletException;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.OutputStream;
-import java.io.OutputStreamWriter;
 import java.io.Writer;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-import javax.servlet.ServletException;
-import jenkins.model.Jenkins;
-import org.apache.commons.io.output.ByteArrayOutputStream;
-import org.kohsuke.accmod.Restricted;
-import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 /**
- *
  * @author Yunus
  */
 public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeStyleBuild> implements TopLevelItem {
-    
-    
+
+
     /**
      * @deprecated as of 1.390
      */
     public NewFreeStyleProject(Jenkins parent, String name) throws IOException {
         super(parent, name);
-        
-//        String worflow = "Workflow";
-//        String[] choices = new String[4];
-//        choices[0] = "intialize";
-//        choices[1] = "test";
-//        choices[2] = "deploy";
-//        choices[3] = "restart-services";
-//       
-//        String description ="";
-//        ChoiceParameterDefinition test = new ChoiceParameterDefinition( worflow, choices,  description);
-//        List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
-//        
-//        String env = "Environment";
-//        choices = new String[4];
-//        choices[0] = "dev";
-//        choices[1] = "test";
-//        choices[2] = "stag";
-//        choices[3] = "prod";
-//        
-//        description ="";
-//        ChoiceParameterDefinition test1 = new ChoiceParameterDefinition( env, choices,  description);
-//        
-//        paramsl.add(test);
-//        paramsl.add(test1);
-//        
-//        super.addProperty(new ParametersDefinitionProperty(paramsl));
-//        
-         
-        //change image
-       // String jenkinhome = Hudson.getInstance().getRootUrl() + "/war/images";
-       // File jenkinsfile = new File(getIconPath());
-       // Path from = jenkinsfile.toPath(); //convert from File to Path
-       // Path to = Paths.get(jenkinhome); //convert from String to Path
-        //Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING);
-        
-         
-         
-       
- }
-    
+    }
+
 
     public NewFreeStyleProject(ItemGroup parent, String name) throws IOException {
         super(parent, name);
-        
-//        String worflow = "Workflow";
-//        String[] choices = new String[4];
-//        choices[0] = "intialize";
-//        choices[1] = "test";
-//        choices[2] = "deploy";
-//        choices[3] = "restart-services";
-//       
-//        String description ="";
-//        ChoiceParameterDefinition test = new ChoiceParameterDefinition( worflow, choices,  description);
-//        List<ParameterDefinition> paramsl = new ArrayList<ParameterDefinition>();
-//        
-//        String env = "Environment";
-//        choices = new String[4];
-//        choices[0] = "dev";
-//        choices[1] = "test";
-//        choices[2] = "stag";
-//        choices[3] = "prod";
-//        
-//        description ="";
-//        ChoiceParameterDefinition test1 = new ChoiceParameterDefinition( env, choices,  description);
-//        
-//        paramsl.add(test);
-//        paramsl.add(test1);
-//      
-//        this.getProperty(ParametersDefinitionProperty.class);
-//       
-//        super.addProperty(new ParametersDefinitionProperty(paramsl));
-//
-//        //change image
-//        String jenkinhome = Hudson.getInstance().getRootDir()+ "/war/images/jenkins.png";
-//     //   jenkinhome = jenkinhome.replaceFirst("\\.", "");
-//            Logger.getLogger(NewFreeStyleProject.class.getName()).log(Level.SEVERE, null, jenkinhome);
-//            Logger.getLogger(NewFreeStyleProject.class.getName()).log(Level.SEVERE, null, getIconPath());
-//           
-//       
-////        File jenkinsfile = new File(getIconPath());
-////        
-////        Path from = jenkinsfile.toPath(); //convert from File to Path
-////        Path to = Paths.get(jenkinhome); //convert from String to Path
-////        Files.copy(from, to, StandardCopyOption.REPLACE_EXISTING);
-//       
     }
-   @Override
+
+    @Override
     protected Class<NewFreeStyleBuild> getBuildClass() {
         return NewFreeStyleBuild.class;
     }
 
+    @Override
     public NewFreeStyleProject.DescriptorImpl getDescriptor() {
-        return (NewFreeStyleProject.DescriptorImpl)Jenkins.getInstance().getDescriptorOrDie(getClass());
+        return (NewFreeStyleProject.DescriptorImpl) Jenkins.getInstance().getDescriptorOrDie(getClass());
     }
 
     @Override
@@ -158,107 +66,126 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
         return "Deploy";
     }
 
-    public String getIconPath() 
-    {
-        String path = Hudson.getInstance().getRootDir() + "/plugins/leroy/jenkins.png";
-       // path = path.replaceFirst("\\.", "");
-        //PluginWrapper wrapper = Hudson.getInstance().getPluginManager().getPlugin();
-        return path;
-    }
-   /**
-           * get workflow and environment from scm 
-         * 
-         * @return 
-         */
-        @JavaScriptMethod 
-        public boolean getWo() 
-                throws IOException, ServletException {
-                 ByteArrayOutputStream output = new ByteArrayOutputStream();
-               
-            try {
-                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-                Writer writer = null;
+    /**
+     * new doConfigSubmit to update build with parameters
+     *
+     * @param req
+     * @param rsp
+     * @throws IOException
+     * @throws ServletException
+     * @throws hudson.model.Descriptor.FormException
+     */
+    @Override
+    public void doConfigSubmit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, Descriptor.FormException {
 
-                SCM scm = this.getScm();
-                
-                //check what if file doesn't exists
-                FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/"));
-               // boolean check = true;
+        JSONObject json = req.getSubmittedForm();
+        String jsonStr = json.toString();
+        List<LeroyBuilder.Target> targets = LeroyBuildHelper.getTargets(jsonStr);
+
+        // now figure out a default target and enabled targets configurations
+        if (!CollectionUtils.isEmpty(targets)) {
+
+            // default target is a target which is chosen if the job is run by some trigger
+            LeroyBuilder.Target defaultTarget = null;
+            for (LeroyBuilder.Target t : targets) {
+                if (t.autoDeploy == true) {
+                    defaultTarget = t;
+                    break;
+                }
+            }
+
+            // move default target to the first place - in this case Jenkins will select it as default
+            targets.remove(defaultTarget);
+            targets.add(0, defaultTarget);
+
+            // targets -> build parameters
+            List<String> buildParamsTargets = new ArrayList<String>(targets.size());
+            for (LeroyBuilder.Target t : targets) {
+                String param = Constants.ENVIRONMENT_PARAM +"=" + t.environment
+                        + ", " + Constants.WORKFLOW_PARAM + "=" + t.workflow
+                        + ", " + Constants.CONFIG_SOURCE_PARAM + "=" + t.configSource;
+                buildParamsTargets.add(param);
+            }
+
+            // add parameters to request
+            String targetConfigurations = StringUtils.join(buildParamsTargets, "\\n");
+            String parameterkey = "{\"parameterized\":{\"parameter\":[{\"name\":\"" + Constants.TARGET_CONFIGURATION + "\",\"choices\":\"" + targetConfigurations + "\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}]}}";
+            JSONObject properties = json.getJSONObject("properties");
+//            properties.remove("hudson-model-ParametersDefinitionProperty");
+//            properties.put("org-jenkins-plugins-leroy-LeroyParametersDefinitionProperty", JSONObject.fromObject(parameterkey));
+            properties.put("hudson-model-ParametersDefinitionProperty", JSONObject.fromObject(parameterkey));
+            req.bindJSON(req, properties);
+            super.doConfigSubmit(req, rsp);
+        }
+
+        // set assigned node
+        String assignedNodeName = LeroyBuildHelper.getAssignedNode(jsonStr);
+        Node n = LeroyUtils.findNodeByName(assignedNodeName);
+        if (n != null) {
+            setAssignedNode(n);
+        }
+        save();
+    }
+
+
+    /**
+     * get workflow and environment from scm
+     *
+     * @return
+     */
+    @JavaScriptMethod
+    public boolean getWo()
+            throws IOException, ServletException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+
+        try {
+            Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+            Writer writer = null;
+
+            SCM scm = this.getScm();
+
+            //check what if file doesn't exists
+            FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/"));
+            // boolean check = true;
 //                getProject().getScmCheckoutStrategy().preCheckout(.this, launcher, this.listener);
 //                getProject().getScmCheckoutStrategy().checkout(this);
-                File tempfile = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/temp1.txt");
-                File tempfile1 = new File(Hudson.getInstance().getRootDir()+"/plugins/leroy/temp/temp2.txt");
-                
-                AbstractBuild build = new NewFreeStyleBuild(this,tempfile );
-                StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile1));         
-               boolean check = this.checkout(build, launcher, stream, tempfile);
-//                
-//                try {
-//                    writer = new BufferedWriter(new OutputStreamWriter(
-//                          new FileOutputStream(leroyhome+"/agentdata.txt"), "utf-8"));
-//                    if(launcher.isUnix())
-//                        writer.write("1\n"+agentname+"\n");
-//                       
-//                    else
-//                        writer.write("3\r\n"+agentname+"\r\n");
-//                } catch (IOException ex) {
-//                  return FormValidation.error("error creating file: "+ex.getMessage());
-//                } finally {
-//                   try {writer.close();} catch (Exception ex) {}
-//                }
-//              
-//                int returnCode = 0;
-//                EnvVars envs = new EnvVars(Functions.getEnvVars()); 
-//                launcher.decorateByEnv(envs);
-//
-//                if(launcher.isUnix())
-//                {                
-//                    returnCode = launcher.launch().cmds("sh", Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.sh", leroyhome, agentname).pwd(leroyhome).stdout(output).join();
-//                }
-//                else
-//                    returnCode = launcher.launch().envs(Functions.getEnvVars()).cmds(Hudson.getInstance().getRootDir() + "/plugins/leroy/addagent.bat" , leroyhome, leroyhome+"/controller.exe" ).join();
-//                
-//                int returnCode1 = 0;
-//              
-//                if(check)
-//                {
-//                    return FormValidation.ok("Success");
-//                }
-//                
-//                return FormValidation.error("Failed to add agent" + output);
-//          
-                return check;
-                
-            } catch (Exception e) {
-                return false;
+            File tempfile = new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/temp1.txt");
+            File tempfile1 = new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/temp2.txt");
+
+            AbstractBuild build = new NewFreeStyleBuild(this, tempfile);
+            StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile1));
+            boolean check = this.checkout(build, launcher, stream, tempfile);
+
+            return check;
+
+        } catch (Exception e) {
+            return false;
 //                return FormValidation.error("Client error : "+e.getMessage());
-            }
-            
         }
-   
-    
-     /**
+
+    }
+
+
+    /**
      * Descriptor is instantiated as a field purely for backward compatibility.
      * Do not do this in your code. Put @Extension on your DescriptorImpl class instead.
      */
     @Restricted(NoExternalUse.class)
-    @Extension(ordinal=1000)
+    @Extension(ordinal = 1000)
     public final static NewFreeStyleProject.DescriptorImpl DESCRIPTOR = new NewFreeStyleProject.DescriptorImpl();
 
-    
 
-    public static class DescriptorImpl extends AbstractProjectDescriptor  {
+    public static class DescriptorImpl extends AbstractProjectDescriptor {
 
         @Override
         public String getDisplayName() {
             return "Leroy Deployment Job";
         }
 
-
-        
+        @Override
         public NewFreeStyleProject newInstance(ItemGroup parent, String name) {
             try {
-                return new NewFreeStyleProject(parent,name);
+                return new NewFreeStyleProject(parent, name);
             } catch (IOException ex) {
                 Logger.getLogger(NewFreeStyleProject.class.getName()).log(Level.SEVERE, null, ex);
                 return null;

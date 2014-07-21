@@ -24,17 +24,8 @@
 package org.jenkins.plugins.leroy;
 
 import hudson.Launcher;
-import hudson.model.AbstractBuild;
-import hudson.model.BuildListener;
-import hudson.model.Environment;
-import hudson.model.Executor;
-import hudson.model.ParametersAction;
-import hudson.model.Result;
-import hudson.tasks.BuildStep;
-import hudson.tasks.BuildWrapper;
-import hudson.tasks.Builder;
-import hudson.tasks.Recorder;
-import hudson.tasks.Notifier;
+import hudson.model.*;
+import hudson.tasks.*;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -51,44 +42,44 @@ import static hudson.model.Result.FAILURE;
 
 /**
  * A build of a {@link Project}.
- *
+ * <p/>
  * <h2>Steps of a build</h2>
- * <p>
+ * <p/>
  * Roughly speaking, a {@link NewBuild} goes through the following stages:
- *
+ * <p/>
  * <dl>
  * <dt>SCM checkout
  * <dd>Hudson decides which directory to use for a build, then the source code is checked out
- *
+ * <p/>
  * <dt>Pre-build steps
  * <dd>Everyone gets their {@link BuildStep#prebuild(AbstractBuild, BuildListener)} invoked
  * to indicate that the build is starting
- *
+ * <p/>
  * <dt>NewBuild wrapper set up
  * <dd>{@link BuildWrapper#setUp(AbstractBuild, Launcher, BuildListener)} is invoked. This is normally
  * to prepare an environment for the build.
- *
+ * <p/>
  * <dt>Builder runs
  * <dd>{@link Builder#perform(AbstractBuild, Launcher, BuildListener)} is invoked. This is where
  * things that are useful to users happen, like calling Ant, Make, etc.
- *
+ * <p/>
  * <dt>Recorder runs
  * <dd>{@link Recorder#perform(AbstractBuild, Launcher, BuildListener)} is invoked. This is normally
  * to record the output from the build, such as test results.
- *
+ * <p/>
  * <dt>Notifier runs
  * <dd>{@link Notifier#perform(AbstractBuild, Launcher, BuildListener)} is invoked. This is normally
  * to send out notifications, based on the results determined so far.
  * </dl>
- *
- * <p>
+ * <p/>
+ * <p/>
  * And beyond that, the build is considered complete, and from then on {@link NewBuild} object is there to
- * keep the record of what happened in this build. 
+ * keep the record of what happened in this build.
  *
  * @author Kohsuke Kawaguchi
  */
-public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B extends ConfigurationBuild<P,B>>
-    extends AbstractBuild<P,B> {
+public abstract class ConfigurationBuild<P extends ConfigurationProject<P, B>, B extends ConfigurationBuild<P, B>>
+        extends AbstractBuild<P, B> {
 
     /**
      * Creates a new build.
@@ -105,10 +96,10 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
      * Loads a build from a log file.
      */
     protected ConfigurationBuild(P project, File buildDir) throws IOException {
-        super(project,buildDir);
+        super(project, buildDir);
     }
 
-//
+    //
 //
 // actions
 //
@@ -120,8 +111,8 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
 
     /**
      * @deprecated as of 1.467
-     *      Override the {@link #run()} method by calling {@link #execute(RunExecution)} with
-     *      proper execution object.
+     * Override the {@link #run()} method by calling {@link #execute(RunExecution)} with
+     * proper execution object.
      */
     @Restricted(NoExternalUse.class)
     protected Runner createRunner() {
@@ -130,7 +121,7 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
 
     /**
      * @deprecated as of 1.467
-     *      Please use {@link BuildExecution}
+     * Please use {@link BuildExecution}
      */
     protected class RunnerImpl extends BuildExecution {
     }
@@ -142,27 +133,27 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
          */
 
         protected Result doRun(BuildListener listener) throws Exception {
-            if(!preBuild(listener,project.getBuilders()))
+            if (!preBuild(listener, project.getBuilders()))
                 return FAILURE;
-            if(!preBuild(listener,project.getPublishersList()))
+            if (!preBuild(listener, project.getPublishersList()))
                 return FAILURE;
 
             Result r = null;
             try {
                 List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
-                
+
                 ParametersAction parameters = getAction(ParametersAction.class);
                 if (parameters != null)
-                    parameters.createBuildWrappers(ConfigurationBuild.this,wrappers);
+                    parameters.createBuildWrappers(ConfigurationBuild.this, wrappers);
 
-                for( BuildWrapper w : wrappers ) {
-                    Environment e = w.setUp((AbstractBuild<?,?>)ConfigurationBuild.this, launcher, listener);
-                    if(e==null)
+                for (BuildWrapper w : wrappers) {
+                    Environment e = w.setUp((AbstractBuild<?, ?>) ConfigurationBuild.this, launcher, listener);
+                    if (e == null)
                         return (r = FAILURE);
                     buildEnvironments.add(e);
                 }
 
-                if(!build(listener,project.getBuilders()))
+                if (!build(listener, project.getBuilders()))
                     r = FAILURE;
             } catch (InterruptedException e) {
                 r = Executor.currentExecutor().abortResult();
@@ -171,11 +162,11 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
             } finally {
                 if (r != null) setResult(r);
                 // tear down in reverse order
-                boolean failed=false;
-                for( int i=buildEnvironments.size()-1; i>=0; i-- ) {
-                    if (!buildEnvironments.get(i).tearDown(ConfigurationBuild.this,listener)) {
-                        failed=true;
-                    }                    
+                boolean failed = false;
+                for (int i = buildEnvironments.size() - 1; i >= 0; i--) {
+                    if (!buildEnvironments.get(i).tearDown(ConfigurationBuild.this, listener)) {
+                        failed = true;
+                    }
                 }
                 // WARNING The return in the finally clause will trump any return before
                 if (failed) return FAILURE;
@@ -200,12 +191,12 @@ public abstract class ConfigurationBuild <P extends ConfigurationProject<P,B>,B 
         }
 
         private boolean build(BuildListener listener, Collection<Builder> steps) throws IOException, InterruptedException {
-            for( BuildStep bs : steps ) {
-                if(!perform(bs,listener)) {
+            for (BuildStep bs : steps) {
+                if (!perform(bs, listener)) {
                     LOGGER.fine(MessageFormat.format("{0} : {1} failed", ConfigurationBuild.this.toString(), bs));
                     return false;
                 }
-                
+
                 Executor executor = getExecutor();
                 if (executor != null && executor.isInterrupted()) {
                     // someone asked build interruption, let stop the build before trying to run another build step

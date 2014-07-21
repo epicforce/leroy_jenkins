@@ -25,7 +25,7 @@ THE SOFTWARE.
 
 <?jelly escape-by-default='true'?>
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
-
+    <script src="${rootURL}/plugin/leroy/myCustom1.js"/>
   <j:if test="${it.supportsMakeDisabled()}">
     <st:include page="makeDisabled.jelly" />
   </j:if>
@@ -33,7 +33,7 @@ THE SOFTWARE.
   <p:projectActionFloatingBox />
 
   <table style="margin-top: 1em; margin-left:1em;">
-      <style type="text/css">   
+      <style type="text/css">
                   
         #main-table[style]{
             background-image: url(/plugin/leroy/image.png) !important;	
@@ -56,6 +56,84 @@ THE SOFTWARE.
     <t:summary icon="notepad.png" href="changes">
       ${%Recent Changes}
     </t:summary>
+
+   <!-- table of deployments -->
+
+
+    <table>
+        <tr>
+            <th></th>
+            <th>${%Environment}</th>
+            <th>${%Workflow}</th>
+            <th>${%Deployer}</th>
+            <th>${%Timestamp}</th>
+            <th>${%Artifacts}</th>
+        </tr>
+        <j:forEach var="stat" items="${it.jobStats}">
+            <tr>
+                <td><img src="${stat.resultIcon}"/></td>
+                <td><a href="#" class="datatable_env">${stat.env}</a></td>
+                <td><a href="#" class="datatable_workflow">${stat.workflow}</a></td>
+                <td>${stat.deployer}</td>
+                <td>${stat.timestampString}</td>
+                <td><a href="${stat.artifactsLink}" class="datatable_artifact">${%Artifacts}</a></td>
+            </tr>
+        </j:forEach>
+    </table>
+
+    <div id="msg" title="title"><p></p></div>
+      <script>
+        var foo = <st:bind value="${it}"/>
+        jQuery('a[class="datatable_env"]').live("click",function(){
+          var target = jQuery(this);
+          var env = jQuery(this).text();
+          foo.getBuildsByEnvironment(env, function(t) {
+                <![CDATA[
+                var respArr = t.responseObject();
+                if (respArr != null) {
+                    var html = "<p/><b>Builds deployed to environment '" + env + "':</b><table><tr><th></th><th>Workflow</th><th>Timestamp</th><th>Url</th></tr>";
+                    for (var i = 0; i < respArr.length; i++) {
+                        html += "<tr>";
+                        var stat = respArr[i];
+                        html += "<td><img src='" + stat.resultIcon + "'/></td>"
+                                + "<td>" + stat.workflow + "</td>"
+                                + "<td>" + stat.timestampString + "</td>"
+                                + "<td><a href = '" + stat.buildNumber + "'>Build #" + stat.buildNumber + "</a></td>";
+
+                    }
+                    html += "</tr>";
+                }
+                html += "</table>";
+            ]]>
+            document.getElementById('msg').innerHTML = html;
+           });
+//          jQuery("#msg").dialog();
+
+        });
+          jQuery('a[class="datatable_workflow"]').live("click",function(){
+          var wf = jQuery(this).text();
+          foo.getBuildsByWorkflow(wf, function(t) {
+          <![CDATA[
+                var respArr = t.responseObject();
+                if (respArr != null) {
+                    var html = "<p/><b>Builds deployed to workflow '" + wf + "':</b><table><tr><th></th><th>Environment</th><th>Timestamp</th><th>Url</th></tr>";
+                    for (var i = 0; i < respArr.length; i++) {
+                        html += "<tr>";
+                        var stat = respArr[i];
+                        html += "<td><img src='" + stat.resultIcon + "'/></td>"
+                                + "<td>" + stat.env + "</td>"
+                                + "<td>" + stat.timestampString + "</td>"
+                                + "<td><a href = '" + stat.buildNumber + "'>Build #" + stat.buildNumber + "</a></td>";
+                    }
+                    html += "</tr>";
+                }
+                html += "</table>";
+            ]]>
+          document.getElementById('msg').innerHTML = html;
+          });
+//          jQuery("#msg").dialog();
+          });
+      </script>
 
     <j:set var="tr" value="${it.lastCompletedBuild.testResultAction}"/>
     <j:if test="${tr!=null}">

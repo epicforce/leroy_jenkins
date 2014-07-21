@@ -1,89 +1,152 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
 
   <script src="${rootURL}/plugin/leroy/myCustom.js"/>
-    
-  <f:section title="Environment Settings">
+  <script src="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.js"/>
+  <link rel="stylesheet" type="text/css" href="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.css" />
+
+
+    <f:section title="Environment Settings">
     <f:block>
-        <f:entry title="LEROY_HOME" field="leroyhome" >
+        <f:entry title="Leroy Home Directory" field="leroyhome" >
           <f:textbox />
         </f:entry>
-        <f:entry title="LEROY_CONTROLLER_PORT" field="leroycontrollerport" >
-          <f:textbox value="1337" />
-        </f:entry>   
         <f:entry title="System Architecture" field="architecture" >
-            <f:select />                  
+            <f:select />
         </f:entry>
-    </f:block>         
+        <f:entry title="Controller version" field="controllerVersion" >
+            <f:readOnlyTextbox />
+        </f:entry>
+    </f:block>
+    <f:block>
+        <f:validateButton
+                title="${%Update Controller}" progress="${%Updating...}"
+                method="updateController" with="architecture,leroyhome,controllerVersion" />
+    </f:block>
   </f:section>
-<!--  <f:section >
+
+    <f:section title="Controller Settings">
+        <f:block>
+            <f:entry title="Host" field="controllerHost" >
+                <f:textbox />
+            </f:entry>
+            <f:entry title="Port" field="controllerPort" >
+                <f:textbox value="1337" />
+            </f:entry>
+            <f:entry title="Bind" field="controllerBind" >
+                <f:textbox  />
+            </f:entry>
+            <f:entry title="Log File" field="controllerLogFile" >
+                <f:textbox />
+            </f:entry>
+            <f:entry title="Log Level" field="controllerLogLevel" >
+                <f:select/>
+            </f:entry>
+            <f:entry title="Agents Checkin Timeout" field="controllerTimeout" >
+                <f:textbox />
+            </f:entry>
+        </f:block>
+    </f:section>
+
+
+    <j:if test="${instance.getInstalledAgents().size()>0}">
+        <f:section title="${%Agents}">
       <f:block>
-        <f:table class="panek">
-            <f:tbody>
-                <div>        
-                    <tr style="margin-left:50px;height:20px;">
-                        <td class="setting-leftspace"></td>
-                        <td class="setting-leftspace"></td>
+          <f:repeatable var="installedAgents" items="${instance.getInstalledAgents()}" noAddButton="true">
+            <table width="100%">
+                <tr>
+                    <td><b>${installedAgents.name}</b>
 
-                        <td class="pane-header1" >
-                           <table>
-                               <td class="pane-header1" style="width:100px;">Agent</td>
-                               <td style="width:100px;">Environments</td>
-                              <td style="width:100px;">Roles</td>
-                              <td style="width:100px;"></td>
-                           </table>
-                        </td>
-                    </tr>
-                    <j:forEach var="v" items="${instance.getAgentList()}">
-                      <tr style="margin-left:50px;height:20px;">
-                        <td class="setting-leftspace"></td>
-                        <td class="setting-leftspace"></td>
+                    <j:if test="${installedAgents.runAsUser!=null}">
+                        <st:nbsp/>|<st:nbsp/><i>runAsUser</i>=${installedAgents.runAsUser}
+                    </j:if>
+                    <j:if test="${installedAgents.shell!=null}">
+                        <st:nbsp/>|<st:nbsp/><i>shell</i>=${installedAgents.shell}
+                    </j:if>
+                    <j:if test="${installedAgents.temporaryDirectory!=null}">
+                        <st:nbsp/>|<st:nbsp/><i>temporaryDirectory</i>=${installedAgents.temporaryDirectory}
+                    </j:if>
+                    <j:if test="${installedAgents.lockerPath!=null}">
+                        <st:nbsp/>|<st:nbsp/><i>lockerPath</i>=${installedAgents.lockerPath}
+                    </j:if>
+                    <input name="_.name" type="hidden" value="${installedAgents.name}"/></td>
+                    <td style="width: 10%;"><f:repeatableDeleteButton value="${%Delete}"/></td>
+                    <!-- used only to make deletion available-->
+                </tr>
+            </table>
+          </f:repeatable>
+      </f:block>
+  </f:section>
+    </j:if>
+    <f:section title="Add Agent">
+        <f:entry title="${%Agent Name}" field="agentName" >
+            <f:textbox />
+        </f:entry>
+        <f:entry title="${%Agent Platform}" field="agentPlatform" >
+            <f:select />
+        </f:entry>
+        <f:entry title="${%Agent Locker Path}" field="agentLockerpath" >
+            <f:textbox />
+        </f:entry>
 
-                        <td class="pane1" >
-                           <table>
-                              <td class="pane1" style="width:100px;">
-                                  <label agentname="${v}">${v}</label>
-                              </td>
-                              <td class="pane1">
-                                    hardcoded html tag instead of jelly tag because of html table rendering issues
-                                    <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillEnvironmentItems" name="_.environment" value="" class="setting-input  select "></select>
-                              </td>
-                              <td class="pane1">
-                                    hardcoded html tag instead of jelly tag because of html table rendering issues
-                                    <select style="width:100px;" agentname="${v}" fillurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/fillRolesItems" name="_.roles" value="" class="setting-input  select "></select>
-                              </td>
-                              <td class="pane1">
-                                    <input style="visibility:hidden;display:none;width:60%;" name="_.rolename" agentname="${v}" value="" class="setting-input   " type="text" />
-                                    hardcoded html tag instead of jelly tag because of html table rendering issues
-                                    <button  type="button" name="_.addrole" agentname="${v}" addurl="/descriptorByName/org.jenkins.plugins.leroy.LeroyNodeProperty/addRole" tabindex="0" id="yui-gen1-button">Add Role</button>                              
-                              </td>
-                            </table>
-                         </td>
-                      </tr>
-                    </j:forEach>
-              
-              </div>
-            </f:tbody>
-        </f:table>
-        <f:section title="Add Agent">
-            <f:advanced>
-               
-                <f:entry title="Agent Name" field="agentname" >
-                    <f:textbox />
-                </f:entry>
-               <f:validateButton
-                   title="${%Add Agent}" progress="${%Adding...}"
-                   method="addAgent" with="agentname,leroyhome,nodename" />  
-            </f:advanced>
-        </f:section>    
-         
-    </f:block>    
-  </f:section>-->
-  
-  <f:section title="Agent Update">
-            <f:advanced>
-               <f:validateButton
-                   title="${%Update Agent}" progress="${%Updating...}"
-                   method="updateAgent" with="architecture,leroyhome" />  
-            </f:advanced>
-        </f:section>   
+        <f:block>
+            <table>
+                <f:optionalBlock name="installViaSshCheckbox" title="Install via SSH">
+                    <f:entry title="${%SSH Host}" field="sshHost" >
+                        <f:textbox default="localhost"/>
+                    </f:entry>
+                    <f:entry title="${%SSH Port}" field="sshPort" >
+                        <f:textbox default="22"/>
+                    </f:entry>
+                    <f:entry title="${%SSH User}" field="sshUser" >
+                        <f:textbox />
+                    </f:entry>
+                    <f:entry title="${%SSH Password}" field="sshPass" >
+                        <f:password />
+                    </f:entry>
+                    <f:entry title="${%Destination Directory}" field="sshDest" >
+                        <f:textbox default="."/>
+                    </f:entry>
+                    <div style="display: none;">
+                        <input name="_.sshInstall" type="hidden" />
+                    </div>
+                </f:optionalBlock>
+            </table>
+        </f:block>
+        <f:validateButton
+                title="${%Add Agent}" progress="${%Adding...}"
+                method="addAgent" with="leroyhome,agentName,agentPlatform,agentLockerpath,sshHost,sshPort,sshUser,sshPass,sshDest,sshInstall" />
+    </f:section>
+
+    <j:if test="${instance.getInstalledAgents().size()>0}">
+        <f:section title="${%Environments}">
+            <f:block>
+                <!--<f:entry field="environments">-->
+                <f:repeatable var="environments" items="${instance.getEnvironments()}" add="${%Add environment}">
+                    <table width="100%">
+                        <f:entry title="${%Name}" field="name">
+                            <f:textbox default="${environments.name}"/>
+                        </f:entry>
+                        <f:entry title="${%Agents}" field="agents">
+                            <f:repeatable var="agents" items="${environments.agents}" add="${%Add agent}">
+                                <table class="repeatedAgent" width="100%">
+                                    <tr>
+                                        <td><table><tr><td>${%Name}:</td><td><input type="text" name="_.name" value="${agents.name}"/></td></tr></table></td>
+                                        <td style="width: 90%;"><table><tr><td>${%Roles}:</td><td><input class="roleTags" type="text" name="_.roles" value="${agents.roles}"/></td></tr></table></td>
+                                        <!--<td style="width: 90%;"><table><tr><td>${%Roles}:</td><td><input class="roleTags" type="text" name="_.roles" value="1,2,3"/></td></tr></table></td>-->
+                                        <td style="width: 10%;"><f:repeatableDeleteButton value="${%Delete}"/></td>
+                                    </tr>
+                                </table>
+                            </f:repeatable>
+                        </f:entry>
+                        <f:entry title="">
+                            <div align="left">
+                                <f:repeatableDeleteButton value="${%Delete environment}"/>
+                            </div>
+                        </f:entry>
+                    </table>
+                </f:repeatable>
+            </f:block>
+        </f:section>
+    </j:if>
+
 </j:jelly>  

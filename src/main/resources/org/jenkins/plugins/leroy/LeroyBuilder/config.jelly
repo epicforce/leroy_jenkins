@@ -1,68 +1,47 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
-<!--  <f:section title="Environment Settings">
-    <f:block>
-        <f:entry title="LEROY_HOME" field="leroyhome" >
-          <f:textbox />
-        </f:entry>    
-    </f:block>    
-  </f:section>-->
+
   <f:section title="Build Settings">
     <f:block>
-        
-        <f:entry title="Workflow" field="workflow">
-            <f:select />         
-        </f:entry>    
-<!--        <f:entry title="Environment" field="envrn">
+        <!-- Leroy Node field -->
+        <f:entry title="${%Leroy Node}" field="leroyNode">
             <f:select />
-        </f:entry>-->
-        <f:invisibleEntry >
-            <f:textbox title="Project Name" field="projectname" />
-        </f:invisibleEntry>
-<!--    <f:entry>
-            <div align="right">
-                <input type="button" id="getWo" value="Get Workflow and Enviroment" /> 
-            </div>
-        </f:entry>-->
-<!--        <f:entry title="CheckOut Strategy" field="checkoutstrategy">
-            <f:select />         
-        </f:entry>    -->
-
-        <td colspan="3">
-            <div name="envtablediv">
-                <table name="envtable" style="margin-left:25px;">
-                    <tr class="envtableheader">
-                        <th>
-                            Enabled
-                        </th>
-                        <th>
-                            Default
-                        </th>
-                        <th>
-                            Auto-deploy
-                        </th>
-                        <th style="width:115px;">
-                           Enviroment
-                        </th>
-                        <th>
-                           Use last config
-                        </th>
-                    </tr>
-                    
-                </table>
-            </div>
-        </td>
-        
-<!--   <f:entry title="Environt" field="parameters1">
-            <select name="parameters1">
-              
-                <j:forEach var="v" items="${instance.parameters}">
-                  <f:option value="${v}" selected="${instance.envrn=='${v}'}">${v}</f:option>
-                
-                </j:forEach>
-       
-            </select>
         </f:entry>
--->
+
+        <!-- Leroy Node field -->
+        <f:entry title="${%Last build policy}">
+            <f:booleanRadio field="useLastBuildWithSameTarget" false="Latest stable" true="${%Same env/workflow combination}" />
+        </f:entry>
+
+        <!-- Target configuration-->
+        <f:entry title="${%Target Configurations}">
+            <f:repeatable var="targets" items="${instance.getTargets()}" minimum="1" add="${%Add target configuration}">
+
+                <table width="100%">
+
+                    <f:entry title="${%Workflow}" field="workflow">
+                        <f:select default="${targets.workflow}"/>
+                    </f:entry>
+                    <f:entry title="${%Environment}" field="environment">
+                        <f:select default="${targets.environment}" />
+                    </f:entry>
+                    <f:entry title="${%Take configuration from}" field="configSource">
+                        <f:select default="${targets.configSource}" />
+                    </f:entry>
+                    <f:entry title="${%Deploy to this environment automatically}" field="autoDeploy">
+                        <f:checkbox checked="${targets.autoDeploy}"/>
+                    </f:entry>
+                    <f:entry title="">
+                        <div align="left">
+                            <f:repeatableDeleteButton class="deleteTargetConfigButton" value="${%Delete target configuration}"/>
+                        </div>
+                    </f:entry>
+                </table>
+            </f:repeatable>
+        </f:entry>
+        <f:invisibleEntry>
+            <f:textbox field="projectname" />
+        </f:invisibleEntry>
+
 
         </f:block>  
   </f:section>
