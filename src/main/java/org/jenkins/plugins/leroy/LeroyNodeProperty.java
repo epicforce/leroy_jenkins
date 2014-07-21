@@ -210,28 +210,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     }
 
     public String getControllerVersion() {
-        String res = "N/A";
-        try {
-            res = LeroyUtils.runController(getLeroyhome(), Functions.getEnvVars(), new String[]{"-v"});
-            // get last string
-            if (res != null) {
-                String[] resLines = res.split(System.lineSeparator());
-                if (res.length() > 0) {
-                    res = resLines[res.length()-1];
-                }
-            }
-            int version = 0;
-            try {
-                res = String.valueOf(Integer.valueOf(res)); // is number?
-            } catch (NumberFormatException e) {
-                res = "N/A";
-            }
-        } catch (Exception e) {
-            // just omit
-        }
-        return res;
+        return LeroyUtils.getControllerVersion(getLeroyhome());
     }
-
 
     @Override
     public Environment setUp(AbstractBuild build, Launcher launcher,
@@ -255,11 +235,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         String requesturl = req.getOriginalRequestURI();
         JSONObject json = null;
         try {
-
             json = req.getSubmittedForm();
-
             JSONObject nodeproperties = json.getJSONObject("nodeProperties");
-
             if (nodeproperties.containsKey("org-jenkins-plugins-leroy-LeroyNodeProperty")) {
                 Jenkins jenkins = Jenkins.getInstance();
                 Computer[] computers = jenkins.getComputers();
@@ -321,33 +298,6 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
         public ListBoxModel doFillAgentPlatformItems() {
             return doFillArchitectureItems();
-        }
-
-
-        public static void main(String[] args) {
-            try {
-                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-                ByteArrayOutputStream output = new ByteArrayOutputStream();
-                List<String> params = new ArrayList<String>();
-                params.add("--addagent");
-                params.add("--agent-name");
-                params.add("222");
-                params.add("--agent-platform");
-                params.add("Win64");
-                params.add("--agent-lockerpath");
-                params.add("");
-                int returnCode = launcher.launch().pwd("C:\\leroy\\").envs(Functions.getEnvVars()).cmds(params).stdout(output).join();
-
-                String res = output.toString("UTF-8");
-                System.out.println(res);
-
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        private String quote(String str) {
-            return "\"" + str + "\"";
         }
 
         public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyHome,
@@ -416,23 +366,28 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
 
         public FormValidation doUpdateController(@QueryParameter("architecture") String architecture,
-                                            @QueryParameter("leroyhome") String leroyhome,
-                                            @QueryParameter("controllerVersion") String controllerVersion) {
-            System.out.println(architecture);
-            System.out.println(controllerVersion);
-
+                                            @QueryParameter("leroyhome") String leroyhome) {
             //get update file from server
             try {
                 Update update = XMLParser.readUpdate();
                 if (update != null) {
+                    // get controller version
+                    String controllerVersion = LeroyUtils.getControllerVersion(leroyhome);
                     if (controllerVersion.equalsIgnoreCase(String.valueOf(update.getVersion()))) {
-                        return FormValidation.error("Controller has last version: '" + update.getVersion() + "'");
+                        return FormValidation.warning("Controller has last version: '" + update.getVersion() + "'");
                     }
                     String binary = update.getBinaries().get(architecture);
                     if (binary != null) {
                         File archive = LeroyUtils.downloadFile(binary);
+                        // create leroyHome if necessary
+                        File leroyHomeFile = new File(leroyhome);
+                        if (!leroyHomeFile.exists()) {
+                            leroyHomeFile.mkdirs();
+                        }
                         LeroyUtils.unpack(archive, new File(leroyhome));
                     }
+                } else {
+                    return FormValidation.error("Cannot get update from server. Please try later.");
                 }
             } catch (Exception e) {
                 return FormValidation.error(e, "Error while updating the controller"); // temporatily show stacktrace on UI

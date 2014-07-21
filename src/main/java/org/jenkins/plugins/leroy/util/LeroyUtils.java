@@ -2,6 +2,7 @@ package org.jenkins.plugins.leroy.util;
 
 import com.trilead.ssh2.util.IOUtils;
 import hudson.EnvVars;
+import hudson.Functions;
 import hudson.Launcher;
 import hudson.model.*;
 import hudson.triggers.SCMTrigger;
@@ -12,7 +13,6 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.FileFileFilter;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
-import org.apache.commons.lang.SystemUtils;
 import org.jenkins.plugins.leroy.LeroyException;
 import org.jenkins.plugins.leroy.LeroyNodeProperty;
 import org.rauschig.jarchivelib.Archiver;
@@ -192,54 +192,32 @@ public class LeroyUtils {
         return false;
     }
 
-
-    public static String runController(String dir, Map<String, String> envs, List<String> params) throws LeroyException {
-
-        String[] parList = new String[params.size()];
-        parList = params.toArray(parList);
-        return runController(dir, envs, parList);
-
-    }
-    // TODO currently forced to return only last line from controller's output
-    // TODO it caused by a bug I encounter
     public static String runController(String dir, Map<String, String> envs, String[] parameters) throws LeroyException {
-
-        String cmd = "";
-        String result = "";
         try {
-
-            if (SystemUtils.IS_OS_UNIX || SystemUtils.IS_OS_LINUX) {
-                cmd += "sh ";
-            }
-            cmd += dir + File.separator +"controller";
-            if (SystemUtils.IS_OS_WINDOWS) {
-                cmd += ".exe";
-            }
             String[] command = new String[parameters.length +1];
-            command[0] = cmd;
+            command[0] = dir + "/controller";
             for (int i = 0; i <parameters.length; i++) {
                 command[i+1] = parameters[i];
             }
-
             ProcessBuilder pb = new ProcessBuilder();
-            pb.environment().putAll(envs);
-            pb.command(command);
+            pb.directory(new File(dir));
+            if (envs != null) {
+                pb.environment().putAll(envs);
+            }
 
-            Process p = pb.start();
+            Process p = pb.command(command).start();
 
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
             StringBuilder builder = new StringBuilder();
-            String line = null;
+            String line ;
             while ( (line = br.readLine()) != null) {
                 builder.append(line);
                 builder.append(System.getProperty("line.separator"));
-                result = line;
             }
+            return builder.toString();
         } catch (Exception e) {
-            throw new LeroyException("Cannot run command: '" + cmd + "'", e);
+            throw new LeroyException("Cannot run controller", e);
         }
-        return result;
-
     }
 
     public static File downloadFile(String url) throws LeroyException {
@@ -274,21 +252,24 @@ public class LeroyUtils {
         }
     }
 
-
-    public static String getScriptsHome() {
-        return Hudson.getInstance().getRootDir() + "/plugins/leroy/scripts/";
+    public static String getControllerVersion(String leroyHome) {
+        String res = "N/A";
+        try {
+            res = LeroyUtils.runController(leroyHome, Functions.getEnvVars(), new String[]{"--version"});
+            res = String.valueOf(Integer.valueOf(res.trim())); // is number?
+        } catch (Exception e) {
+            // just omit
+        }
+        return res;
     }
-
 
     public static void main(String[] args) {
         try {
-            String res = runController("C:\\Users\\night\\Downloads\\leroy_Win64", null, new String[]{"-v"});
+            String res = runController("C:/leroy", null, new String[]{"--version"});
             System.out.println(res);
         } catch (LeroyException e) {
             e.printStackTrace();
         }
-
     }
-
 
 }
