@@ -38,7 +38,6 @@ import java.util.logging.Logger;
  */
 public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeStyleBuild> implements TopLevelItem {
 
-
     /**
      * @deprecated as of 1.390
      */
@@ -84,7 +83,6 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
 
         // now figure out a default target and enabled targets configurations
         if (!CollectionUtils.isEmpty(targets)) {
-
             // default target is a target which is chosen if the job is run by some trigger
             LeroyBuilder.Target defaultTarget = null;
             for (LeroyBuilder.Target t : targets) {
@@ -162,9 +160,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
             return false;
 //                return FormValidation.error("Client error : "+e.getMessage());
         }
-
     }
-
 
     /**
      * Descriptor is instantiated as a field purely for backward compatibility.

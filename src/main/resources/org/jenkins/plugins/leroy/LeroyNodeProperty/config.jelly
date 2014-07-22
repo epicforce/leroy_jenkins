@@ -20,7 +20,7 @@
     <f:block>
         <f:validateButton
                 title="${%Update Controller}" progress="${%Updating...}"
-                method="updateController" with="architecture,leroyhome,controllerVersion" />
+                method="updateController" with="architecture,leroyhome" />
     </f:block>
   </f:section>
 

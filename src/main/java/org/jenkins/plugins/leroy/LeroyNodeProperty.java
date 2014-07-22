@@ -339,11 +339,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
                 // if we need to install it via ssh
                 if ("true".equalsIgnoreCase(sshInstall)) {
-                    String extension = ".zip";
-                    if (launcher.isUnix()) {
-                        extension = ".tgz";
-                    }
-                    String bundleName = agentName + "-" + agentPlatform + extension;
+                    String bundleName = agentName + "-" + agentPlatform + ".zip";
                     returnCode = launcher.launch().envs(Functions.getEnvVars()).pwd(leroyHome)
                             .cmds(leroyHome + "/controller"
                                     , "--ssh-install", bundleName
