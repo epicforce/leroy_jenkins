@@ -28,7 +28,7 @@ import hudson.model.*;
 import hudson.tasks.*;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.leroy.util.Constants;
-import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
+import org.jenkins.plugins.leroy.util.JsonUtils;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
@@ -152,7 +152,7 @@ public abstract class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P,
         private void init() throws IOException, InterruptedException {
             String targetConfig = getBuild().getEnvironment(listener).get(Constants.TARGET_CONFIGURATION);
             if (!StringUtils.isEmpty(targetConfig)) {
-                target = LeroyBuildHelper.getTargetFromBuildParameter(targetConfig);
+                target = JsonUtils.getTargetFromBuildParameter(targetConfig);
             }
             user = LeroyUtils.getUserRunTheBuild(getBuild());
         }

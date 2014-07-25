@@ -15,6 +15,8 @@ jQuery(document).ready(function(){
     });
 
 
+//    <tr><td class="setting-leftspace">&nbsp;</td><td class="setting-name">Is Leroy Property</td><td class="setting-main"><input name="parameter.defaultValue" class=" " type="checkbox"></td><td class="setting-help"><a class="help-button" href="#" helpurl="/help/parameter/boolean-default.html" tabindex="9999"><img height="16" alt="Help for feature: Default Value" width="16" src="/static/74b91e88/images/16x16/help.png"></a></td></tr>
+
 //    jQuery('input[name="_.autoDeploy"]').live("change",function(){
 //        var checkboxes = jQuery('input[name="_.autoDeploy"]:checked');
 //        var len = checkboxes.size();

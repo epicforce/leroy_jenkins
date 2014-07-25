@@ -7,15 +7,9 @@ package org.jenkins.plugins.leroy;
 import hudson.Extension;
 import hudson.model.*;
 import jenkins.model.Jenkins;
-import net.sf.json.JSONObject;
-import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
-import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
-import org.kohsuke.stapler.StaplerRequest;
-import org.kohsuke.stapler.StaplerResponse;
 
-import javax.servlet.ServletException;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;

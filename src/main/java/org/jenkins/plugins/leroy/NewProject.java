@@ -44,7 +44,6 @@ import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.collections.Predicate;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang.StringUtils;
-import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.jenkins.plugins.leroy.util.XMLParser;
 import org.kohsuke.stapler.StaplerRequest;
@@ -239,18 +238,6 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         return publishers;
     }
 
-    public List<Publisher> getVisiblePublishersList() {
-        ListIterator<Publisher> it = getPublishersList().listIterator();
-        List<Publisher> visiblePublishers = new ArrayList<Publisher>();
-        while (it.hasNext()) {
-            Publisher publisher = it.next();
-            if (!(publisher instanceof Hidden)) {
-                visiblePublishers.add(publisher);
-            }
-        }
-        return visiblePublishers;
-    }
-
     public Map<Descriptor<BuildWrapper>, BuildWrapper> getBuildWrappers() {
         return getBuildWrappersList().toMap();
     }
@@ -326,9 +313,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
     //
     @Override
     protected void submit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {
-
         JSONObject json = req.getSubmittedForm();
-
         super.submit(req, rsp);
         getBuildWrappersList().rebuild(req, json, BuildWrappers.getFor(this));
         getBuildersList().rebuildHetero(req, json, Builder.all(), "builder");

@@ -34,7 +34,7 @@ import hudson.tasks.Maven.ProjectWithMaven;
 import hudson.triggers.Trigger;
 import hudson.util.DescribableList;
 import net.sf.json.JSONObject;
-import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
+import org.jenkins.plugins.leroy.util.JsonUtils;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
@@ -88,7 +88,7 @@ public abstract class ConfigurationProject<P extends ConfigurationProject<P, B>,
         // set assigned node
         JSONObject json = req.getSubmittedForm();
         String jsonStr = json.toString();
-        String leroyBuilderJson = LeroyBuildHelper.getLeroyConfigurationBuilderJSON(jsonStr);
+        String leroyBuilderJson = JsonUtils.getLeroyConfigurationBuilderJSON(jsonStr);
         String leroyNode = JsonPath.read(leroyBuilderJson, "$.leroyNode");
         String assignedNodeName = leroyNode == null ? "" : leroyNode;
         Node n = LeroyUtils.findNodeByName(assignedNodeName);

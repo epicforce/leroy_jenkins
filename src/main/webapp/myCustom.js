@@ -3,6 +3,20 @@
  */
 jQuery(document).ready(function(){
 
+    setTimeout(function() {
+        jQuery('div[descriptorid="hudson.model.ChoiceParameterDefinition"]').each(function()
+            {
+                // hack - add timer for each such item for now
+                var name = jQuery(this).find('input[name="parameter.name"]');
+                if (name != null) {
+                    if (name.val() == "Target Configuration") {
+                        jQuery(this).css('style="visibility:hidden;display:none;"');
+                    }
+                }
+            }
+        ),
+        5000});
+
     //on load refresh the two select boxes rows
     new Ajax.Request(jQuery("select[name='_.environment']").attr("fillurl"), {
             timeout: 10000,

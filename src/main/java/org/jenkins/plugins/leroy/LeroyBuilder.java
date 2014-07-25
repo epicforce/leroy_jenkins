@@ -2,7 +2,6 @@ package org.jenkins.plugins.leroy;
 
 import hudson.EnvVars;
 import hudson.Extension;
-import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.*;
 import hudson.plugins.copyartifact.BuildSelector;
@@ -16,9 +15,8 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.AbstractFileFilter;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.jenkins.plugins.leroy.util.Constants;
-import org.jenkins.plugins.leroy.util.LeroyBuildHelper;
+import org.jenkins.plugins.leroy.util.JsonUtils;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.jenkins.plugins.leroy.util.XMLParser;
 import org.kohsuke.stapler.DataBoundConstructor;
@@ -86,7 +84,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
         // get build target
         String targetParam = envs.get(Constants.TARGET_CONFIGURATION);
-        final Target target = LeroyBuildHelper.getTargetFromBuildParameter(targetParam);
+        final Target target = JsonUtils.getTargetFromBuildParameter(targetParam);
         Constants.ConfigSource configSource = Constants.ConfigSource.valueOf(target.configSource);
 
         String leroyHome = envs.expand(LeroyUtils.getLeroyHome(launcher));
@@ -143,11 +141,18 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         log.println("Copy files from " + workspaceFile.toString() + " to " + leroyHomeFile.toString() + " - success!");
 
         // deploy
-        returnCode = launcher.launch().pwd(leroyHomeFile).envs(envs).cmds(leroyHome + "/controller", "--workflow", target.workflow, "--environment", target.environment).stdout(listener).join();
+        List<String> cmds = new ArrayList<String>();
+        cmds.add(leroyHome + "/controller");
+        cmds.add("--workflow");
+        cmds.add(target.workflow);
+        cmds.add("--environment");
+        cmds.add(target.environment);
+        addGlobalProperties(envs, cmds);
+
+        returnCode = launcher.launch().pwd(leroyHomeFile).envs(envs).cmds(cmds).stdout(listener).join();
         if (returnCode != 0) {
             return false;
         }
-
         log.println("Deploy - success!");
 
         // archive configurations
@@ -174,6 +179,17 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         }
         log.println("Archive artifacts - success!");
         return returnCode == 0;
+    }
+
+    private void addGlobalProperties(EnvVars envs, List<String> cmds) {
+        for (Map.Entry<String,String> entry : envs.entrySet()) {
+           if (entry.getKey().startsWith(Constants.LEROY_PROPERTY_PREFIX)) {
+               String key = entry.getKey().substring(Constants.LEROY_PROPERTY_PREFIX.length());
+               String value = entry.getValue();
+               cmds.add("--add-global-property");
+               cmds.add(key + "=" + value);
+           }
+        }
     }
 
     @Override

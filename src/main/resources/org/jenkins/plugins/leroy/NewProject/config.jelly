@@ -35,6 +35,6 @@ THE SOFTWARE.
     <p:config-buildWrappers />
     <st:include page="config-builders.jelly" />
     <!--<p:config-builders />-->
-    <!--<p:config-publishers2 />-->
-    <st:include page="config-visible-publishers2.jelly" />
+    <p:config-publishers2 />
+    <!--<st:include page="config-visible-publishers2.jelly" />-->
 </j:jelly>

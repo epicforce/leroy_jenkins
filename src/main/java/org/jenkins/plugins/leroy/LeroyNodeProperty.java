@@ -53,6 +53,9 @@ import org.kohsuke.stapler.StaplerRequest;
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -85,7 +88,6 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     private String controllerTimeout;
 
     private String controllerVersion;
-
 
     @DataBoundConstructor
     public LeroyNodeProperty(String leroyhome, String architecture, String controllerHost, String controllerPort, String controllerBind, String controllerLogFile, String controllerLogLevel, String controllerTimeout, List<AgentBean> installedAgents, List<EnvironmentBean> environments) {
@@ -267,6 +269,22 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     }
 
     /**
+     * @return internal address of the slave hosting this node or 127.0.0.1 if cannot define it
+     */
+    public String getDefaultControllerAddress() {
+        String defautlAddr = "127.0.0.1";
+        try {
+            InetAddress localhost = InetAddress.getLocalHost();
+            if (localhost != null) {
+                defautlAddr = localhost.getHostAddress();
+            }
+        } catch (Exception e) {
+            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, "Cannot get the address of the local host", e);
+        }
+        return defautlAddr;
+    }
+
+    /**
      *
      */
     @Extension
@@ -434,6 +452,5 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             return f.canWrite();
         }
     }
-
 
 }

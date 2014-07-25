@@ -27,22 +27,22 @@
     <f:section title="Controller Settings">
         <f:block>
             <f:entry title="Host" field="controllerHost" >
-                <f:textbox />
+                <f:textbox default="${instance.getDefaultControllerAddress}"/>
             </f:entry>
             <f:entry title="Port" field="controllerPort" >
-                <f:textbox value="1337" />
+                <f:textbox default="1337" />
             </f:entry>
             <f:entry title="Bind" field="controllerBind" >
-                <f:textbox  />
+                <f:textbox default="0.0.0.0"/>
             </f:entry>
             <f:entry title="Log File" field="controllerLogFile" >
-                <f:textbox />
+                <f:textbox default="controller.log"/>
             </f:entry>
             <f:entry title="Log Level" field="controllerLogLevel" >
-                <f:select/>
+                <f:select default="error"/>
             </f:entry>
             <f:entry title="Agents Checkin Timeout" field="controllerTimeout" >
-                <f:textbox />
+                <f:textbox default="15"/>
             </f:entry>
         </f:block>
     </f:section>
@@ -98,7 +98,7 @@
                         <f:textbox default="22"/>
                     </f:entry>
                     <f:entry title="${%SSH User}" field="sshUser" >
-                        <f:textbox />
+                        <f:password />
                     </f:entry>
                     <f:entry title="${%SSH Password}" field="sshPass" >
                         <f:password />
