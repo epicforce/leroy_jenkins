@@ -12,8 +12,6 @@ public class Constants {
 
     public static final String MASTER_NODE = "<master_node>";
 
-    public static final String LEROY_PROPERTY_PREFIX = "LEROY_PROPERTY_";
-
     public static final String UPDATE_XML = "https://dl.dropboxusercontent.com/u/250424534/update.xml"; // TODO move to properties file
 
     public static enum Architecture {

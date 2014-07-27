@@ -2,12 +2,12 @@
   <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js">
 </script>
 <script>
-$(document).ready(function(){
-  $(input[name="_.leroyhome"]).focusout(function(){
-    $(input[name="_.goalType"]).selectmenu("refresh");
-    console.log("Something happened");
-  });
-});
+//$(document).ready(function(){
+//  $(input[name="_.leroyhome"]).focusout(function(){
+//    $(input[name="_.goalType"]).selectmenu("refresh");
+//    console.log("Something happened");
+//  });
+//});
 </script>
 
 </j:jelly>  

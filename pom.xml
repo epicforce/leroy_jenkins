@@ -187,7 +187,6 @@
     </dependencies>
 
     <build>
-
         <pluginManagement>
             <plugins>
 

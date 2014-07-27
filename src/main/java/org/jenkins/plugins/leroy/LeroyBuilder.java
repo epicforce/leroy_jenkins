@@ -77,6 +77,19 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         this.useLastBuildWithSameTarget = useLastBuildWithSameTarget;
     }
 
+
+    private List<ParameterValue> findLeroyParameterValues(AbstractBuild b) {
+        ParametersAction paramAction = b.getAction(ParametersAction.class);
+        List<ParameterValue> values = new ArrayList<ParameterValue>();
+        for (ParameterValue v : paramAction.getParameters()) {
+            if (v instanceof LeroyPasswordParameterValue || v instanceof LeroyStringParameterValue ) {
+                values.add(v);
+            }
+        }
+        return values;
+    }
+
+
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException, OutOfMemoryError {
         EnvVars envs = build.getEnvironment(listener);
@@ -147,7 +160,13 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         cmds.add(target.workflow);
         cmds.add("--environment");
         cmds.add(target.environment);
-        addGlobalProperties(envs, cmds);
+        List<ParameterValue> leroyParameValues = findLeroyParameterValues(build);
+        for (ParameterValue leroyParamValue : leroyParameValues) {
+            cmds.add("--add-global-property");
+            String key = leroyParamValue.getName();
+            String value = (String)build.getBuildVariables().get(key);
+            cmds.add(key + "=" + value);
+        }
 
         returnCode = launcher.launch().pwd(leroyHomeFile).envs(envs).cmds(cmds).stdout(listener).join();
         if (returnCode != 0) {
@@ -181,17 +200,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         return returnCode == 0;
     }
 
-    private void addGlobalProperties(EnvVars envs, List<String> cmds) {
-        for (Map.Entry<String,String> entry : envs.entrySet()) {
-           if (entry.getKey().startsWith(Constants.LEROY_PROPERTY_PREFIX)) {
-               String key = entry.getKey().substring(Constants.LEROY_PROPERTY_PREFIX.length());
-               String value = entry.getValue();
-               cmds.add("--add-global-property");
-               cmds.add(key + "=" + value);
-           }
-        }
-    }
-
     @Override
     public DescriptorImpl getDescriptor() {
         return (DescriptorImpl) super.getDescriptor();
@@ -215,8 +223,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
             try {
                 String envspath = LeroyUtils.getEnvironmentsXml();
                 List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
-
-
                 for (String envs : envsroles) {
                     items.add(envs, envs);
                 }
@@ -248,7 +254,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
         public ListBoxModel doFillWorkflowItems() {
         ListBoxModel items = new ListBoxModel();
-
             try {
                 String workflowPath = LeroyUtils.getWorkflowsFolder();
                 //get file names
@@ -284,7 +289,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
             return items;
         }
-
 
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             if (NewFreeStyleProject.class.isAssignableFrom(aClass)) {

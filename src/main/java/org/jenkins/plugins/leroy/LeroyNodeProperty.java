@@ -188,26 +188,50 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     }
 
     public String getControllerHost() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getHost())) {
+            String host = "127.0.0.1";
+            try {
+                host = InetAddress.getLocalHost().getHostAddress();
+            } catch (Throwable e) {
+                // omit
+            }
+            return host;
+        }
         return getControllerBean().getHost();
     }
 
     public String getControllerPort() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getPort())) {
+            return "1337";
+        }
         return getControllerBean().getPort();
     }
 
     public String getControllerBind() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getBind())) {
+            return "0.0.0.0";
+        }
         return getControllerBean().getBind();
     }
 
     public String getControllerLogFile() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getLogFile())) {
+            return "controller.log";
+        }
         return getControllerBean().getLogFile();
     }
 
     public String getControllerLogLevel() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getLogLevel())) {
+            return "error";
+        }
         return getControllerBean().getLogLevel();
     }
 
     public String getControllerTimeout() {
+        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getAgentsCheckinTimeout())) {
+            return "15";
+        }
         return getControllerBean().getAgentsCheckinTimeout();
     }
 

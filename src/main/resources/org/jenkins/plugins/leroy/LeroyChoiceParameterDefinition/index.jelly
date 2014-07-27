@@ -1,7 +1,7 @@
 <!--
 The MIT License
 
-Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi
+Copyright (c) 2004-2009, Sun Microsystems, Inc., Kohsuke Kawaguchi, Tom Huybrechts
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,19 +22,18 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 -->
 
-<!--
-  Config page
--->
 <?jelly escape-by-default='true'?>
-<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:p="/lib/hudson/project">
-    <st:include page="configure-com.jelly" />
-    <script src="${rootURL}/plugin/leroy/js/deployJobConfig.js"/>
-    <p:config-trigger>
-          <p:config-upstream-pseudo-trigger />
-    </p:config-trigger>
-    <p:config-buildWrappers />
-    <st:include page="config-builders.jelly" />
-    <!--<p:config-builders />-->
-    <p:config-publishers2 />
-    <!--<st:include page="config-visible-publishers2.jelly" />-->
+<j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define"
+	xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form"
+	xmlns:i="jelly:fmt" xmlns:p="/lib/hudson/project">
+	<f:entry title="${it.name}" description="${it.formattedDescription}">
+		<div name="parameter">
+			<input type="hidden" name="name" value="${it.name}" />
+            <select name="value">
+              <j:forEach var="value" items="${it.choices}">
+                <f:option selected="${it.value==value}">${value}</f:option>
+              </j:forEach>
+            </select>
+		</div>
+	</f:entry>
 </j:jelly>

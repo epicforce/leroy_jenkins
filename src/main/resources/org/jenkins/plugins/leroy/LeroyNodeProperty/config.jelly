@@ -1,6 +1,6 @@
 <j:jelly xmlns:j="jelly:core" xmlns:st="jelly:stapler" xmlns:d="jelly:define" xmlns:l="/lib/layout" xmlns:t="/lib/hudson" xmlns:f="/lib/form" xmlns:i="jelly:fmt">
 
-  <script src="${rootURL}/plugin/leroy/myCustom.js"/>
+  <script src="${rootURL}/plugin/leroy/js/leroyNodeConfig.js"/>
   <script src="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.js"/>
   <link rel="stylesheet" type="text/css" href="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.css" />
 

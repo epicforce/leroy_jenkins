@@ -6,10 +6,6 @@
     <st:include page="sidepanel.jelly" />
     <f:breadcrumb-config-outline />
     <l:main-panel>
-      <st:include page="css1.jelly" />
-      
-      <script src="${rootURL}/plugin/leroy/myCustom.js" />
-
       <div class="behavior-loading">${%LOADING}</div>
       <f:form method="post" action="configSubmit" name="config">
         <j:set var="descriptor" value="${it.descriptor}" />
