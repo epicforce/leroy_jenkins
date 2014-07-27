@@ -95,8 +95,10 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
             }
 
             // move default target to the first place - in this case Jenkins will select it as default
-            targets.remove(defaultTarget);
-            targets.add(0, defaultTarget);
+            if (defaultTarget != null) {
+                targets.remove(defaultTarget);
+                targets.add(0, defaultTarget);
+            }
 
             // targets -> build parameters
             List<String> buildParamsTargets = new ArrayList<String>(targets.size());
