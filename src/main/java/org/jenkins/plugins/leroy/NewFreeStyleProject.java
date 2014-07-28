@@ -40,6 +40,8 @@ import java.util.logging.Logger;
  */
 public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeStyleBuild> implements TopLevelItem {
 
+    private static Logger LOGGER = Logger.getLogger(NewFreeStyleProject.class.getName());
+
     /**
      * @deprecated as of 1.390
      */
@@ -81,7 +83,11 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
 
         JSONObject json = req.getSubmittedForm();
         String jsonStr = json.toString();
+        LOGGER.fine("Submitted form: " + jsonStr);
+
         List<LeroyBuilder.Target> targets = JsonUtils.getTargets(jsonStr);
+
+        LOGGER.fine("Got " + (targets == null ? "null" : targets.size()) + " targets from JSON form.");
 
         // now figure out a default target and enabled targets configurations
         if (!CollectionUtils.isEmpty(targets)) {
@@ -95,44 +101,53 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
             }
 
             // move default target to the first place - in this case Jenkins will select it as default
+            LOGGER.fine("Default target configuration is :" + (defaultTarget == null ? "null" : defaultTarget.toString()));
             if (defaultTarget != null) {
                 targets.remove(defaultTarget);
                 targets.add(0, defaultTarget);
             }
 
             // targets -> build parameters
-            List<String> buildParamsTargets = new ArrayList<String>(targets.size());
+            List<String> buildParamsTargets = new ArrayList<String>();
             for (LeroyBuilder.Target t : targets) {
                 String param = Constants.ENVIRONMENT_PARAM +"=" + t.environment
                         + ", " + Constants.WORKFLOW_PARAM + "=" + t.workflow
                         + ", " + Constants.CONFIG_SOURCE_PARAM + "=" + t.configSource;
                 buildParamsTargets.add(param);
+                LOGGER.fine("Target Configuration : " + param);
             }
 
             // add parameters to request
             String targetConfigurations = StringUtils.join(buildParamsTargets, "\\n");
             JSONObject properties = json.getJSONObject("properties");
+            LOGGER.fine("JSONObject: properties :" + properties);
             if (properties.size() != 0) {
                 JSONObject paramDefProp = properties.getJSONObject("hudson-model-ParametersDefinitionProperty");
+                LOGGER.fine("JSONObject: hudson-model-ParametersDefinitionProperty :" + paramDefProp);
                 JSONObject parameterized = null;
                 if (paramDefProp.size() != 0) {
                     parameterized = paramDefProp.getJSONObject("parameterized");
+                    LOGGER.fine("JSONObject: parameterized :" + parameterized);
                     JSON parameter = null;
                     try {
                         parameter = parameterized.getJSONObject("parameter");
                     } catch (Exception e) {
                         parameter = parameterized.getJSONArray("parameter");
                     }
+                    LOGGER.fine("JSONObject: parameter :" + parameter );
                     JSONArray arr = null;
                     if (parameter.size() != 0) {
                         String paramJson = "{\"name\":\"" + Constants.TARGET_CONFIGURATION + "\",\"choices\":\"" + targetConfigurations +"\",\"description\":\"\",\"stapler-class\":\"hudson.model.ChoiceParameterDefinition\",\"kind\":\"hudson.model.ChoiceParameterDefinition\"}";
                         if (parameter instanceof JSONObject) {
+                            LOGGER.fine("parameter is JSONObject");
                             if (((JSONObject) parameter).getString("name").equals(Constants.TARGET_CONFIGURATION)) {
                                 arr = JSONArray.fromObject("[" + paramJson + "]");
                             } else {
                                 arr = JSONArray.fromObject("[" + paramJson + "," + parameter.toString() + "]");
                             }
+                            LOGGER.fine("JSONObject: arr :" + arr );
                         } else if (parameter instanceof JSONArray) {
+                            LOGGER.fine("parameter is JSONArray");
                             arr = ((JSONArray) parameter);
                             JSONObject itemToDelete = null;
                             for (Object obj : arr) {
@@ -144,6 +159,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
                                 arr.remove(itemToDelete);
                             }
                             arr.add(0, JSONObject.fromObject(paramJson));
+                            LOGGER.fine("JSONObject: arr :" + arr );
                         }
                         parameterized.put("parameter", arr);
                     }
@@ -153,6 +169,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
                     paramDefProp.put("parameterized", JSONObject.fromObject(value));
                 }
                 properties.put("hudson-model-ParametersDefinitionProperty", paramDefProp);
+                LOGGER.fine("JSONObject: properties after adding parameters :" + properties );
                 req.bindJSON(req, properties);
             }
             super.doConfigSubmit(req, rsp);
@@ -163,6 +180,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
         Node n = LeroyUtils.findNodeByName(assignedNodeName);
         if (n != null) {
             setAssignedNode(n);
+            LOGGER.fine("Assigned node :" + assignedNodeName);
         }
         save();
     }

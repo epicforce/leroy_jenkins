@@ -328,6 +328,16 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         public Target() {
 
         }
+
+        @Override
+        public String toString() {
+            return "Target{" +
+                    "environment='" + environment + '\'' +
+                    ", workflow='" + workflow + '\'' +
+                    ", configSource='" + configSource + '\'' +
+                    ", autoDeploy=" + autoDeploy +
+                    '}';
+        }
     }
 
 }
