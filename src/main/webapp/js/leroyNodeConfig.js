@@ -194,9 +194,40 @@ jQuery(document).ready(function(){
         }
     });
 
+    /**
+     * This method check if agent id is unique in current environment
+     * TODO: this method doesn't work with repeated-chunks created by user: need to fugure out how to deal with DOM tree changes caused by hudson js
+     */
+    jQuery('input[name="_.id"][class="agentId"]').focusout(function(){
+        var validationFailed = false;
+        var currInput = jQuery(this);
+        var currText = currInput.val();
+        // if empty
+        if (!currText) {
+            validationFailed = true;
+        }
+        // we need to check the uniqueness among all inputs in current environment
+        // hence, find the closes div class="repeated-container" ant take it id input fields
+        if (!validationFailed) {
+            jQuery(this).closest('div[class="repeated-container"]').find('input[name="_.id"][class="agentId"]').not(currInput).each(function(){
+                if (jQuery(this).val() == currText) {
+                    validationFailed = true;
+                    return false; //break each()
+                }
+            });
+        }
+        if (validationFailed) {
+            jQuery(currInput).css("background-color","#cc6666");
+        } else {
+            jQuery(currInput).css("background-color","white");
+        }
+    });
+
     jQuery('input[class="roleTags"]').tagsInput({
         'defaultText':'Add a Role',
         'width':'100%',
         'height':'15px'
     });
 });
+
+

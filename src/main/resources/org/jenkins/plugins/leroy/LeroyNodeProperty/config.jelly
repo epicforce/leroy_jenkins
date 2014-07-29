@@ -121,7 +121,7 @@
         <f:section title="${%Environments}">
             <f:block>
                 <!--<f:entry field="environments">-->
-                <f:repeatable var="environments" items="${instance.getEnvironments()}" add="${%Add environment}">
+                <f:repeatable var="environments" items="${instance.loadAndGetEnvironments()}" add="${%Add environment}">
                     <table width="100%">
                         <f:entry title="${%Name}" field="name">
                             <f:textbox default="${environments.name}"/>
@@ -130,9 +130,9 @@
                             <f:repeatable var="agents" items="${environments.agents}" add="${%Add agent}">
                                 <table class="repeatedAgent" width="100%">
                                     <tr>
+                                        <td><table><tr><td>${%Id}:</td><td><input class="agentId" type="text" name="_.id" value="${agents.id}"/></td></tr></table></td>
                                         <td><table><tr><td>${%Name}:</td><td><input type="text" name="_.name" value="${agents.name}"/></td></tr></table></td>
                                         <td style="width: 90%;"><table><tr><td>${%Roles}:</td><td><input class="roleTags" type="text" name="_.roles" value="${agents.roles}"/></td></tr></table></td>
-                                        <!--<td style="width: 90%;"><table><tr><td>${%Roles}:</td><td><input class="roleTags" type="text" name="_.roles" value="1,2,3"/></td></tr></table></td>-->
                                         <td style="width: 10%;"><f:repeatableDeleteButton value="${%Delete}"/></td>
                                     </tr>
                                 </table>

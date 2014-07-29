@@ -32,32 +32,28 @@ import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
 import hudson.util.ListBoxModel;
-import jenkins.model.Jenkins;
 import net.sf.json.JSONObject;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.leroy.beans.Update;
 import org.jenkins.plugins.leroy.jaxb.beans.AgentBean;
+import org.jenkins.plugins.leroy.jaxb.beans.AgentInEnvironmentBean;
 import org.jenkins.plugins.leroy.jaxb.beans.ControllerBean;
 import org.jenkins.plugins.leroy.jaxb.beans.EnvironmentBean;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.jenkins.plugins.leroy.util.XMLParser;
-import org.kohsuke.stapler.DataBoundConstructor;
-import org.kohsuke.stapler.QueryParameter;
-import org.kohsuke.stapler.Stapler;
-import org.kohsuke.stapler.StaplerRequest;
+import org.kohsuke.stapler.*;
 
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.NetworkInterface;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -101,9 +97,6 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         this.controllerTimeout = controllerTimeout;
         this.installedAgents = installedAgents;
         this.environments = environments;
-        updateControllerXml();
-        updateAgentsXml();
-        updateEnvironmentsXml();
     }
 
     private void updateControllerXml() {
@@ -129,19 +122,16 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         controllerTimeout = controller.getAgentsCheckinTimeout();
     }
 
-    public List<EnvironmentBean> getEnvironments() {
-        // dumb
-//        environments = new ArrayList<EnvironmentBean>();
-//
-//        List<AgentInEnvironmentBean> agents = new ArrayList<AgentInEnvironmentBean>();
-//        agents.add(new AgentInEnvironmentBean("agent1","admin,customer,deployer","id1"));
-//        agents.add(new AgentInEnvironmentBean("agent2","admin,deployer","id2"));
-//        agents.add(new AgentInEnvironmentBean("agent3","admin","id3"));
-//
-//        environments.add(new EnvironmentBean("env1", agents ));
-//        environments.add(new EnvironmentBean("env2", agents ));
+    /**
+     * This method loads environments from <LEROY_HOME></>/environments.xml
+     * @return
+     */
+    public List<EnvironmentBean> loadAndGetEnvironments() {
         environments = XMLParser.readEnvironments(leroyhome + "/environments.xml");
+        return environments;
+    }
 
+    public List<EnvironmentBean> getEnvironments() {
         return environments;
     }
 
@@ -258,38 +248,35 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     @Override
     public NodeProperty<?> reconfigure(org.kohsuke.stapler.StaplerRequest req, net.sf.json.JSONObject form) throws Descriptor.FormException {
 
-        String requesturl = req.getOriginalRequestURI();
-        JSONObject json = null;
-        try {
-            json = req.getSubmittedForm();
-            JSONObject nodeproperties = json.getJSONObject("nodeProperties");
-            if (nodeproperties.containsKey("org-jenkins-plugins-leroy-LeroyNodeProperty")) {
-                Jenkins jenkins = Jenkins.getInstance();
-                Computer[] computers = jenkins.getComputers();
+        if (form == null) {
+            return null;
+        }
+        LeroyNodeProperty prop = (LeroyNodeProperty)getDescriptor().newInstance(req, form);
 
-                for (int i = 0; i < computers.length; i++) {
-                    EnvVars envs = null;
-                    envs = computers[i].buildEnvironment(TaskListener.NULL);
-
-                    String name = computers[i].getName();
-
-                        // TODO remove check for single LEROY_HOME
-//                    if (computers[i].getName() == "" && envs.containsKey(Constants.IS_LEROY_NODE) && !requesturl.contains("master")) {
-//                        throw new Descriptor.FormException("There cannot be more that one leroy node", "");
-//                    } else if (computers[i].getName() != "" && envs.containsKey(Constants.IS_LEROY_NODE) && !requesturl.contains(computers[i].getName())) {
-//                        throw new Descriptor.FormException("There cannot be more that one leroy node", "");
-//                    }
-
+        //TODO  move to validator class later
+        if (!CollectionUtils.isEmpty(prop.getEnvironments())) {
+            for (EnvironmentBean env : prop.getEnvironments()) {
+                List<AgentInEnvironmentBean> agents = env.getAgents();
+                if (!CollectionUtils.isEmpty(agents)) {
+                    Set<String> agentIds = new HashSet<String>();
+                    for (AgentInEnvironmentBean agent : agents) {
+                        if (StringUtils.isEmpty(agent.getId())) {
+                            throw new Descriptor.FormException("Agent ID cannot be empty", "id");
+                        }
+                        if (!agentIds.add(agent.getId())) {
+                            throw new Descriptor.FormException("Agent with ID '" + agent.getId() + "' already exists in environment '" + env.getName() + "'", "id");
+                        }
+                    }
                 }
             }
-        } catch (ServletException ex) {
-            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
-        } catch (InterruptedException ex) {
-            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, null, ex);
         }
-        return super.reconfigure(req, form);
+
+        // update files in LEROY_HOME directory
+        prop.updateControllerXml();
+        prop.updateAgentsXml();
+        prop.updateEnvironmentsXml();
+ 
+        return prop;
     }
 
     /**
@@ -463,7 +450,6 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 return "/help/system-config/globalEnvironmentVariables.html";
             }
         }
-
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
