@@ -7,4 +7,5 @@ lib/*.jar
 lib/*.war
 *.iml
 .idea
-
+*.*~
+#.*#
