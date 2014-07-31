@@ -5,16 +5,15 @@
 package org.jenkins.plugins.leroy;
 
 import hudson.Extension;
-import hudson.FilePath;
-import hudson.Launcher;
-import hudson.model.*;
-import hudson.scm.SCM;
+import hudson.model.Descriptor;
+import hudson.model.ItemGroup;
+import hudson.model.Node;
+import hudson.model.TopLevelItem;
 import jenkins.model.Jenkins;
 import net.sf.json.JSON;
 import net.sf.json.JSONArray;
 import net.sf.json.JSONObject;
 import org.apache.commons.collections.CollectionUtils;
-import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.JsonUtils;
@@ -23,13 +22,9 @@ import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 import org.kohsuke.stapler.StaplerRequest;
 import org.kohsuke.stapler.StaplerResponse;
-import org.kohsuke.stapler.bind.JavaScriptMethod;
 
 import javax.servlet.ServletException;
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.Writer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Level;
@@ -185,12 +180,12 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
         save();
     }
 
-
     /**
      * get workflow and environment from scm
      *
      * @return
      */
+    /*
     @JavaScriptMethod
     public boolean getWo()
             throws IOException, ServletException {
@@ -221,7 +216,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
 //                return FormValidation.error("Client error : "+e.getMessage());
         }
     }
-
+*/
     /**
      * Descriptor is instantiated as a field purely for backward compatibility.
      * Do not do this in your code. Put @Extension on your DescriptorImpl class instead.
@@ -229,7 +224,6 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
     @Restricted(NoExternalUse.class)
     @Extension(ordinal = 1000)
     public final static NewFreeStyleProject.DescriptorImpl DESCRIPTOR = new NewFreeStyleProject.DescriptorImpl();
-
 
     public static class DescriptorImpl extends AbstractProjectDescriptor {
 
@@ -243,7 +237,7 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
             try {
                 return new NewFreeStyleProject(parent, name);
             } catch (IOException ex) {
-                Logger.getLogger(NewFreeStyleProject.class.getName()).log(Level.SEVERE, null, ex);
+                LOGGER.log(Level.SEVERE, null, ex);
                 return null;
             }
         }

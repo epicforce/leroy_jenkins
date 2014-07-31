@@ -82,7 +82,7 @@ import static hudson.model.Result.FAILURE;
  *
  * @author Kohsuke Kawaguchi
  */
-public abstract class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P, B>>
+public class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P, B>>
         extends AbstractBuild<P, B> {
 
     /**
@@ -169,7 +169,7 @@ public abstract class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P,
         }
 
         private Result checkLeroyHomeWritable(BuildListener listener, Result r) throws IOException, InterruptedException {
-            File leroyHome = new File(LeroyUtils.getLeroyHome());
+            File leroyHome = new File(LeroyUtils.getLeroyHome(Executor.currentExecutor()));
             if (!leroyHome.canWrite()) {
                 r = Executor.currentExecutor().abortResult();
                 listener.error("LEROY_HOME is not writeable to {0} please grant this user write permissions to this folder in order for Leroy to function properly.", user);
@@ -192,7 +192,6 @@ public abstract class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P,
 
                 List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
                 ParametersAction parameters = getAction(ParametersAction.class);
-
 
                 if (parameters != null)
                     parameters.createBuildWrappers(NewBuild.this, wrappers);

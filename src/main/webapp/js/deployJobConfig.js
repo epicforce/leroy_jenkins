@@ -2,8 +2,6 @@
  * Created by Dzmitry Bahdanovich on 27.07.14.
  */
 jQuery(document).ready(function(){
-    jQuery('input[name="_.target"]').attr("readonly","readonly");
-    jQuery('input[name="_.target"]').attr("disabled","disabled");
 
     jQuery('div[descriptorid="hudson.model.ChoiceParameterDefinition"]').each(function()
         {

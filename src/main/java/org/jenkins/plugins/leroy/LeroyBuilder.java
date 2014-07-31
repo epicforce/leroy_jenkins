@@ -12,9 +12,6 @@ import hudson.tasks.Builder;
 import hudson.util.ListBoxModel;
 import net.sf.json.JSONObject;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.AbstractFileFilter;
-import org.apache.commons.io.filefilter.IOFileFilter;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.JsonUtils;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
@@ -26,9 +23,8 @@ import java.io.File;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.net.URI;
-import java.util.*;
-import java.util.logging.Level;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Logger;
 
 /**
@@ -41,11 +37,15 @@ import java.util.logging.Logger;
  */
 public class LeroyBuilder extends AbstractLeroyBuilder {
 
+    private static final Logger LOGGER = Logger.getLogger(LeroyBuilder.class.getName());
+
     private String projectname;
 
     private List<Target> targets;
 
     private String leroyNode;
+
+    private List<String> workflows; // from SCM
 
     private boolean useLastBuildWithSameTarget;
 
@@ -69,6 +69,10 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         return targets;
     }
 
+    public void setWorkflows(List<String> workflows) {
+        this.workflows = workflows;
+    }
+
     public boolean isUseLastBuildWithSameTarget() {
         return useLastBuildWithSameTarget;
     }
@@ -76,7 +80,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
     public void setUseLastBuildWithSameTarget(boolean useLastBuildWithSameTarget) {
         this.useLastBuildWithSameTarget = useLastBuildWithSameTarget;
     }
-
 
     private List<ParameterValue> findLeroyParameterValues(AbstractBuild b) {
         ParametersAction paramAction = b.getAction(ParametersAction.class);
@@ -100,7 +103,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         final Target target = JsonUtils.getTargetFromBuildParameter(targetParam);
         Constants.ConfigSource configSource = Constants.ConfigSource.valueOf(target.configSource);
 
-        String leroyHome = envs.expand(LeroyUtils.getLeroyHome(launcher));
+        String leroyHome = envs.expand(LeroyUtils.getLeroyHome(Executor.currentExecutor()));
         log.println("LEROY_HOME: " + leroyHome);
 
         File workspaceFile = new File( build.getWorkspace().toURI().getPath());
@@ -202,13 +205,28 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
     @Override
     public DescriptorImpl getDescriptor() {
-        return (DescriptorImpl) super.getDescriptor();
+        DescriptorImpl descr = (DescriptorImpl) super.getDescriptor();
+        descr.setLeroyHome(LeroyUtils.getLeroyHome(leroyNode));
+        descr.setWorkflows(workflows);
+        return descr;
     }
 
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
+
+        private String leroyHome;
+        private List<String> workflows;
+
         public DescriptorImpl() {
             load();
+        }
+
+        public void setLeroyHome(String leroyHome) {
+            this.leroyHome = leroyHome;
+        }
+
+        public void setWorkflows(List<String> workflows) {
+            this.workflows = workflows;
         }
 
         public ListBoxModel doFillConfigSourceItems() {
@@ -220,16 +238,10 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
         public ListBoxModel doFillEnvironmentItems() {
             ListBoxModel items = new ListBoxModel();
-            try {
-                String envspath = LeroyUtils.getEnvironmentsXml();
-                List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
-                for (String envs : envsroles) {
-                    items.add(envs, envs);
-                }
-            } catch (InterruptedException ex) {
-                Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IOException ex) {
-                Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+            String envspath = leroyHome + "/environments.xml";
+            List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
+            for (String envs : envsroles) {
+                items.add(envs, envs);
             }
             return items;
         }
@@ -252,41 +264,16 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
             return items;
         }
 
+        /**
+         * Get the list of workflows and fill workflow select list in Leroy Build step
+         * Called from main.jelly
+         * @return
+         */
         public ListBoxModel doFillWorkflowItems() {
-        ListBoxModel items = new ListBoxModel();
-            try {
-                String workflowPath = LeroyUtils.getWorkflowsFolder();
-                //get file names
-                IOFileFilter workflowFileFilter = new AbstractFileFilter() {
-                    @Override
-                    public boolean accept(File file) {
-                        try {
-                            if (LeroyUtils.isWorkflow(file)) {
-                                return true;
-                            }
-                        } catch (Throwable t) {
-                            t.printStackTrace();
-                        }
-                        return false;
-                    }
-                };
-                Iterator<File> fileIterator = FileUtils.iterateFiles(new File(workflowPath), workflowFileFilter, TrueFileFilter.INSTANCE);
-                if (fileIterator != null) {
-                    URI workFlowsBase = new File(workflowPath).toURI();
-                    while (fileIterator.hasNext()) {
-                        // get relative path using workflow folder as a base and remove extension
-                        File wf = fileIterator.next();
-                        String relative = workFlowsBase.relativize(wf.toURI()).getPath();
-                        String woExtension = relative.substring(0, relative.lastIndexOf('.'));
-                        items.add(woExtension, woExtension);
-                    }
-                }
-            } catch (InterruptedException ex) {
-                Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
-            } catch (IOException ex) {
-                Logger.getLogger(LeroyBuilder.class.getName()).log(Level.SEVERE, null, ex);
+            ListBoxModel items = new ListBoxModel();
+            for (String wf : workflows) {
+                items.add(wf, wf);
             }
-
             return items;
         }
 

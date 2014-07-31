@@ -5,6 +5,7 @@ import hudson.EnvVars;
 import hudson.Functions;
 import hudson.Launcher;
 import hudson.model.*;
+import hudson.slaves.NodeProperty;
 import hudson.triggers.SCMTrigger;
 import hudson.util.DescribableList;
 import jenkins.model.Jenkins;
@@ -13,6 +14,7 @@ import org.apache.commons.io.filefilter.DirectoryFileFilter;
 import org.apache.commons.io.filefilter.FileFileFilter;
 import org.apache.commons.io.filefilter.FileFilterUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.lang.StringUtils;
 import org.jenkins.plugins.leroy.LeroyException;
 import org.jenkins.plugins.leroy.LeroyNodeProperty;
 import org.rauschig.jarchivelib.Archiver;
@@ -26,8 +28,11 @@ import java.nio.channels.ReadableByteChannel;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class LeroyUtils {
+    private static final Logger LOGGER = Logger.getLogger(LeroyUtils.class.getName());
 
     public static final String USER_ID_CAUSE_CLASS_NAME = "hudson.model.Cause$UserIdCause";
     public static final String SCM_TRIGGER = "SCMTrigger";
@@ -92,32 +97,46 @@ public class LeroyUtils {
     }
 
     /**
-     * @return Leroy home directory
-     * @throws InterruptedException
-     * @throws IOException
+     * Return LEROY_HOME of a node with a given name
+     * @param nodeName
+     * @return
      */
-    @Deprecated
-    public static String getLeroyHome() throws InterruptedException, IOException {
-        Jenkins jenkins = Jenkins.getInstance();
-        Computer[] computers = jenkins.getComputers();
-
-        for (int i = 0; i < computers.length; i++) {
-            EnvVars envs = computers[i].buildEnvironment(TaskListener.NULL);
-            if (envs.containsKey(Constants.IS_LEROY_NODE)) {
-                return envs.get(Constants.LEROY_HOME);
+    public static String getLeroyHome(String nodeName) {
+        Node node = findNodeByName(nodeName);
+        String result = "";
+        if (node != null) {
+            for (NodeProperty prop : node.getNodeProperties()) {
+                if (prop instanceof LeroyNodeProperty) {
+                    result = ((LeroyNodeProperty) prop).getLeroyhome();
+                    break;
+                }
             }
         }
-        return null;
+        return result;
     }
 
-    public static String getLeroyHome(Launcher launcher) throws InterruptedException, IOException {
-        EnvVars envs = launcher.getComputer().buildEnvironment(TaskListener.NULL);
-        if (envs.containsKey(Constants.IS_LEROY_NODE)) {
-            return envs.get(Constants.LEROY_HOME);
+    public static String getLeroyHome(Executor exec) throws IOException, InterruptedException {
+        if (exec == null) {
+            LOGGER.log(Level.SEVERE, "Cannot get LEROY_HOME as executor is null");
+            return null;
         }
+        Computer comp = exec.getOwner();
+        if (comp == null) {
+            LOGGER.log(Level.SEVERE, "Cannot get LEROY_HOME as executor owner is null");
+            return null;
+        }
+        EnvVars envs = comp.buildEnvironment(TaskListener.NULL);
+        if (envs.containsKey(Constants.IS_LEROY_NODE)) {
+            String leroyHome = envs.get(Constants.LEROY_HOME);
+            if (StringUtils.isEmpty(leroyHome)) {
+                LOGGER.log(Level.SEVERE, "LEROY_HOME is empty at " + comp.getDisplayName());
+            }
+            LOGGER.log(Level.FINE, "LEROY_HOME: " + leroyHome);
+            return leroyHome;
+        }
+        LOGGER.log(Level.SEVERE, "Node " + comp.getDisplayName() + " is not a Leroy Node");
         return null;
     }
-
 
     public static List<Computer> getLeroyNodes() throws IOException, InterruptedException {
         Jenkins jenkins = Jenkins.getInstance();
@@ -132,6 +151,11 @@ public class LeroyUtils {
         return leroyNodes;
     }
 
+    /**
+     * Return jenkins node by it's name
+     * @param name
+     * @return
+     */
     public static Node findNodeByName(String name) {
         if (name == null) {
             return null;
@@ -167,14 +191,6 @@ public class LeroyUtils {
         if (source.exists() && source.canRead()) {
             FileUtils.copyFileToDirectory(source, dest);
         }
-    }
-
-    public static String getEnvironmentsXml() throws InterruptedException, IOException {
-        return getLeroyHome() + "/environments.xml";
-    }
-
-    public static String getWorkflowsFolder() throws InterruptedException, IOException {
-        return getLeroyHome() + "/workflows/";
     }
 
     public static boolean isWorkflow(File file) throws LeroyException {
