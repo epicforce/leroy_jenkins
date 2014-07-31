@@ -1,4 +1,4 @@
-
+<pre>
  == Leroy Jenkins Plugin ==
  == (c) 2013 Epic Force  ==
  == www.leroydeploy.com  ==
@@ -12,3 +12,4 @@ and devops engineers to work together to bring automation and consistency to dep
 a simple xml format stored in SCM.
 
 ... more: https://github.com/epicforce/leroy_jenkins/wiki
+</pre>
