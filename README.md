@@ -11,5 +11,5 @@ allows one to create a web based application deployment dashboard granting softw
 and devops engineers to work together to bring automation and consistency to deployments using 
 a simple xml format stored in SCM.
 
-... more: https://github.com/epicforce/leroy_jenkins/wiki
+... more: <A href="https://github.com/epicforce/leroy_jenkins/wiki">https://github.com/epicforce/leroy_jenkins/wiki</a>
 </pre>
