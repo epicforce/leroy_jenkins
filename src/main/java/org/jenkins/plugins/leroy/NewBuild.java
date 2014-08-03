@@ -23,6 +23,7 @@
  */
 package org.jenkins.plugins.leroy;
 
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.*;
 import hudson.tasks.*;
@@ -168,9 +169,11 @@ public class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P, B>>
             getBuild().setDescription("By: " + user); //TODO externalize
         }
 
-        private Result checkLeroyHomeWritable(BuildListener listener, Result r) throws IOException, InterruptedException {
-            File leroyHome = new File(LeroyUtils.getLeroyHome(Executor.currentExecutor()));
-            if (!leroyHome.canWrite()) {
+        private Result checkLeroyHomeWritable(BuildListener listener) throws IOException, InterruptedException {
+            String leroyHome = LeroyUtils.getLeroyHome(Executor.currentExecutor());
+            Node node = Executor.currentExecutor().getOwner().getNode();
+            Result r = null;
+            if (!LeroyUtils.canWrite(new FilePath(node.getChannel(), leroyHome))) {
                 r = Executor.currentExecutor().abortResult();
                 listener.error("LEROY_HOME is not writeable to {0} please grant this user write permissions to this folder in order for Leroy to function properly.", user);
             }
@@ -188,7 +191,7 @@ public class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P, B>>
                 return FAILURE;
 
             try {
-                checkLeroyHomeWritable(listener, r);
+                r = checkLeroyHomeWritable(listener);
 
                 List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
                 ParametersAction parameters = getAction(ParametersAction.class);

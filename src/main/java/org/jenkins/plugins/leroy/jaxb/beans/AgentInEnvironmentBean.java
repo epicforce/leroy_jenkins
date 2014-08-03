@@ -6,14 +6,16 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.io.Serializable;
 
 /**
  * Created by Dzmitry Bahdanovich on 19.07.14.
  */
 @XmlRootElement(name="agent")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class AgentInEnvironmentBean {
+public class AgentInEnvironmentBean implements Serializable{
 
+    private static final long serialVersionUID = -399112613849556948L;
     @XmlAttribute
     private String name;
 

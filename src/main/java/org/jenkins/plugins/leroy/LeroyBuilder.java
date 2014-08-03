@@ -2,29 +2,30 @@ package org.jenkins.plugins.leroy;
 
 import hudson.EnvVars;
 import hudson.Extension;
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.*;
 import hudson.plugins.copyartifact.BuildSelector;
 import hudson.plugins.copyartifact.CopyArtifact;
 import hudson.plugins.copyartifact.StatusBuildSelector;
+import hudson.slaves.NodeProperty;
 import hudson.tasks.BuildStepDescriptor;
 import hudson.tasks.Builder;
 import hudson.util.ListBoxModel;
 import net.sf.json.JSONObject;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.collections.CollectionUtils;
+import org.jenkins.plugins.leroy.jaxb.beans.EnvironmentBean;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.JsonUtils;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
-import org.jenkins.plugins.leroy.util.XMLParser;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
-import java.io.File;
-import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 
 /**
@@ -103,30 +104,28 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         final Target target = JsonUtils.getTargetFromBuildParameter(targetParam);
         Constants.ConfigSource configSource = Constants.ConfigSource.valueOf(target.configSource);
 
-        String leroyHome = envs.expand(LeroyUtils.getLeroyHome(Executor.currentExecutor()));
+        FilePath ws = build.getWorkspace();
+        FilePath leroyHome = new FilePath(launcher.getChannel(), envs.get(Constants.LEROY_HOME));
         log.println("LEROY_HOME: " + leroyHome);
-
-        File workspaceFile = new File( build.getWorkspace().toURI().getPath());
-        File leroyHomeFile = new File(leroyHome);
 
         int returnCode = 0;
 
         // clear up configs from LEROY HOME
-        FileUtils.deleteDirectory(new File(leroyHomeFile, "/commands"));
-        FileUtils.deleteDirectory(new File(leroyHomeFile, "/workflows"));
-        FileUtils.deleteDirectory(new File(leroyHomeFile, "/properties"));
-        FileUtils.deleteDirectory(new File(leroyHomeFile, "/resources"));
+        new FilePath(leroyHome, "commands").deleteRecursive();
+        new FilePath(leroyHome, "workflows").deleteRecursive();
+        new FilePath(leroyHome, "properties").deleteRecursive();
+        new FilePath(leroyHome, "resources").deleteRecursive();
 
         // if we take configurations from the last build then we need to "prepare" LEROY_HOME
-        if (configSource == Constants.ConfigSource.LAST_BUILD) {
+        if (configSource == Constants.ConfigSource.LAST_SUCCESS) {
             // first remove "control files" from workspace
-            FileUtils.deleteDirectory(new File(workspaceFile, "/commands"));
-            FileUtils.deleteDirectory(new File(workspaceFile, "/workflows"));
-            FileUtils.deleteDirectory(new File(workspaceFile, "/properties"));
-            FileUtils.deleteDirectory(new File(workspaceFile, "/resources"));
-            FileUtils.deleteQuietly(new File(workspaceFile, "/environments.xml"));
-
+            new FilePath(ws, "commands").deleteRecursive();
+            new FilePath(ws, "workflows").deleteRecursive();
+            new FilePath(ws, "properties").deleteRecursive();
+            new FilePath(ws, "resources").deleteRecursive();
+            new FilePath(ws, "environments.xml").delete();
             log.println("Remove old config files from workspace - success!");
+
             // now copy artifact from LAST BUILD to workspace
             // we have 2 possible source builds here: last stable and last stable with the same "target" (workflow/environment combination)
             CopyArtifact copyFromBuildToWks = null;
@@ -140,10 +139,10 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
                         }
                         return false;
                     }
-                }, "", workspaceFile.getAbsolutePath(), false, false, true);
+                }, "", ws.getRemote(), false, false, true);
             } else {
                 // or copy artifacts from the latest stable build
-                copyFromBuildToWks = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", workspaceFile.getAbsolutePath(), false, false, true);
+                copyFromBuildToWks = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", ws.getRemote(), false, false, true);
             }
             boolean success = copyFromBuildToWks.perform(build, launcher, listener);
             if (!success) {
@@ -153,8 +152,8 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         }
 
         // copy artifacts from workspace to LEROY HOME
-        LeroyUtils.copyDirectoryQuietly(workspaceFile, leroyHomeFile);
-        log.println("Copy files from " + workspaceFile.toString() + " to " + leroyHomeFile.toString() + " - success!");
+        ws.copyRecursiveTo(leroyHome);
+        log.println("Copy files from " + ws + " to " + leroyHome + " - success!");
 
         // deploy
         List<String> cmds = new ArrayList<String>();
@@ -171,34 +170,15 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
             cmds.add(key + "=" + value);
         }
 
-        returnCode = launcher.launch().pwd(leroyHomeFile).envs(envs).cmds(cmds).stdout(listener).join();
+        returnCode = launcher.launch().pwd(leroyHome).envs(envs).cmds(cmds).stdout(listener).join();
         if (returnCode != 0) {
             return false;
         }
         log.println("Deploy - success!");
 
         // archive configurations
-        File archiveFile = build.getArtifactsDir();
-        LeroyUtils.copyDirectoryQuietly(new File(leroyHomeFile, "commands"), new File(archiveFile, "commands"));
-        LeroyUtils.copyDirectoryQuietly(new File(leroyHomeFile, "workflows"), new File(archiveFile, "workflows"));
-        LeroyUtils.copyDirectoryQuietly(new File(leroyHomeFile, "properties"), new File(archiveFile, "properties"));
-        LeroyUtils.copyDirectoryQuietly(new File(leroyHomeFile, "environments"), new File(archiveFile, "environments"));
-        File[] filesToCopy = leroyHomeFile.listFiles(new FilenameFilter() {
-            private String[] extensions = new String[]{".xml",".key", ".pem", ".crt"};
-            @Override
-            public boolean accept(File dir, String name) {
-                String lowerName = name.toLowerCase();
-                for (String ext : extensions) {
-                    if (lowerName.endsWith(ext)) {
-                        return true;
-                    }
-                }
-                return false;
-            }
-        });
-        for (File file : filesToCopy) {
-            LeroyUtils.copyFileToDirectoryQuietly(file, archiveFile);
-        }
+        Map<String,String> files = LeroyUtils.listFiles(leroyHome, "commands/**,workflows/**,properties/**,environments/**,*.xml,*.key,*.pem,*.crt", "");
+        build.getArtifactManager().archive(leroyHome, launcher, listener, files);
         log.println("Archive artifacts - success!");
         return returnCode == 0;
     }
@@ -206,7 +186,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
     @Override
     public DescriptorImpl getDescriptor() {
         DescriptorImpl descr = (DescriptorImpl) super.getDescriptor();
-        descr.setLeroyHome(LeroyUtils.getLeroyHome(leroyNode));
+        descr.setLeroyNode(leroyNode);
         descr.setWorkflows(workflows);
         return descr;
     }
@@ -214,15 +194,15 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
     @Extension // This indicates to Jenkins that this is an implementation of an extension point.
     public static final class DescriptorImpl extends BuildStepDescriptor<Builder> {
 
-        private String leroyHome;
         private List<String> workflows;
+        private String leroyNode;
 
         public DescriptorImpl() {
             load();
         }
 
-        public void setLeroyHome(String leroyHome) {
-            this.leroyHome = leroyHome;
+        public void setLeroyNode(String leroyNode) {
+            this.leroyNode = leroyNode;
         }
 
         public void setWorkflows(List<String> workflows) {
@@ -232,16 +212,26 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         public ListBoxModel doFillConfigSourceItems() {
             ListBoxModel items = new ListBoxModel();
             items.add(Constants.ConfigSource.SCM.getValue(), Constants.ConfigSource.SCM.name());
-            items.add(Constants.ConfigSource.LAST_BUILD.getValue(), Constants.ConfigSource.LAST_BUILD.name());
+            items.add(Constants.ConfigSource.LAST_SUCCESS.getValue(), Constants.ConfigSource.LAST_SUCCESS.name());
             return items;
         }
 
         public ListBoxModel doFillEnvironmentItems() {
             ListBoxModel items = new ListBoxModel();
-            String envspath = leroyHome + "/environments.xml";
-            List<String> envsroles = XMLParser.getEnvironment(new File(envspath));
-            for (String envs : envsroles) {
-                items.add(envs, envs);
+            Node node = LeroyUtils.findNodeByName(leroyNode);
+            List<EnvironmentBean> envs = new ArrayList<EnvironmentBean>();
+            if (node != null) {
+                for (NodeProperty<?> nodeProperty : node.getNodeProperties()) {
+                    if (nodeProperty instanceof LeroyNodeProperty) {
+                        envs = ((LeroyNodeProperty)nodeProperty).getEnvironments();
+                    }
+                }
+            }
+            if (CollectionUtils.isEmpty(envs)) {
+                LOGGER.severe("No environments found for node '" + leroyNode + "'");
+            }
+            for (EnvironmentBean env : envs) {
+                items.add(env.getName(), env.getName());
             }
             return items;
         }

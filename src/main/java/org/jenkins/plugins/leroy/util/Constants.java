@@ -10,9 +10,12 @@ public class Constants {
     public static final String CONFIG_SOURCE_PARAM = "Configuration Source";
     public static final String TARGET_CONFIGURATION = "Target Configuration";
 
-    public static final String MASTER_NODE = "<master_node>";
-
+    public static final String MASTER_NODE = "(master)";
     public static final String UPDATE_XML = "https://dl.dropboxusercontent.com/u/250424534/update.xml"; // TODO move to properties file
+
+    // massages
+    // TODO externalize
+    public static final String CANNOT_ESTABLISH_CONNECTION = "Cannot establish connection to node";
 
     public static enum Architecture {
         AIX("AIX-00F604884C00"),
@@ -35,7 +38,7 @@ public class Constants {
 
     public static enum ConfigSource {
         SCM("SCM"),
-        LAST_BUILD("Last Build");
+        LAST_SUCCESS("Last successful build");
 
         private ConfigSource(String value) {
             this.value = value;

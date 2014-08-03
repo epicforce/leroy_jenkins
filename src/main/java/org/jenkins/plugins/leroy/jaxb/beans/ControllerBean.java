@@ -4,14 +4,16 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlAttribute;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.io.Serializable;
 
 /**
  * Created by Dzmitry Bahdanovich on 29.06.14.
  */
 @XmlRootElement(name="controller")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class ControllerBean {
+public class ControllerBean implements Serializable {
 
+    private static final long serialVersionUID = -2529131142786345730L;
     /**
      * The maximum time (in seconds) that the controller should wait for all agents to connect.
      */

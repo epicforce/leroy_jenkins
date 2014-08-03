@@ -5,7 +5,9 @@
 package org.jenkins.plugins.leroy;
 
 import hudson.Extension;
-import hudson.model.*;
+import hudson.model.AbstractProject;
+import hudson.model.ItemGroup;
+import hudson.model.TopLevelItem;
 import jenkins.model.Jenkins;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;

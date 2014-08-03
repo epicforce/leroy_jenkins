@@ -23,11 +23,9 @@
  */
 package org.jenkins.plugins.leroy;
 
-import hudson.EnvVars;
-import hudson.Extension;
-import hudson.Functions;
-import hudson.Launcher;
+import hudson.*;
 import hudson.model.*;
+import hudson.remoting.VirtualChannel;
 import hudson.slaves.NodeProperty;
 import hudson.slaves.NodePropertyDescriptor;
 import hudson.util.FormValidation;
@@ -44,12 +42,13 @@ import org.jenkins.plugins.leroy.jaxb.beans.EnvironmentBean;
 import org.jenkins.plugins.leroy.util.Constants;
 import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.jenkins.plugins.leroy.util.XMLParser;
-import org.kohsuke.stapler.*;
+import org.kohsuke.stapler.DataBoundConstructor;
+import org.kohsuke.stapler.QueryParameter;
+import org.kohsuke.stapler.StaplerRequest;
 
 import javax.servlet.ServletException;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -64,16 +63,20 @@ import java.util.logging.Logger;
  */
 public class LeroyNodeProperty extends NodeProperty<Node> {
 
+    private static final Logger LOGGER = Logger.getLogger(LeroyNodeProperty.class.getName());
+
     private String leroyhome;
 
     private String architecture;
 
-    private List<AgentBean> installedAgents;
+    private String nodeName;
+
+    private List<AgentBean> installedAgents = new ArrayList<AgentBean>();
 
     /**
      * The list of environments on this node
      */
-    private List<EnvironmentBean> environments;
+    private List<EnvironmentBean> environments = new ArrayList<EnvironmentBean>();
 
     // controller settings
     private String controllerHost;
@@ -85,8 +88,11 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
     private String controllerVersion;
 
+    private transient ControllerBean controllerBean;
+
     @DataBoundConstructor
-    public LeroyNodeProperty(String leroyhome, String architecture, String controllerHost, String controllerPort, String controllerBind, String controllerLogFile, String controllerLogLevel, String controllerTimeout, List<AgentBean> installedAgents, List<EnvironmentBean> environments) {
+    public LeroyNodeProperty(String nodeName, String leroyhome, String architecture, String controllerHost, String controllerPort, String controllerBind, String controllerLogFile, String controllerLogLevel, String controllerTimeout, List<AgentBean> installedAgents, List<EnvironmentBean> environments) {
+        this.nodeName = nodeName;
         this.leroyhome = leroyhome;
         this.architecture = architecture;
         this.controllerHost = controllerHost;
@@ -99,35 +105,20 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         this.environments = environments;
     }
 
-    private void updateControllerXml() {
-        String controllerXml = leroyhome + "/controller.xml";
-        ControllerBean controller = new ControllerBean();
-        controller.setHost(controllerHost);
-        controller.setPort(controllerPort);
-        controller.setBind(controllerBind);
-        controller.setLogFile(controllerLogFile);
-        controller.setLogLevel(controllerLogLevel);
-        controller.setAgentsCheckinTimeout(controllerTimeout);
-        XMLParser.saveController(controller, controllerXml);
-    }
-
-    private void updateControllerJobProperties() {
-        String controllerXml = leroyhome + "/controller.xml";
-        ControllerBean controller = XMLParser.readController(controllerXml);
-        controllerHost = controller.getHost();
-        controllerPort = controller.getPort();
-        controllerBind = controller.getBind();
-        controllerLogFile = controller.getLogFile();
-        controllerLogLevel = controller.getLogLevel();
-        controllerTimeout = controller.getAgentsCheckinTimeout();
-    }
-
     /**
-     * This method loads environments from <LEROY_HOME></>/environments.xml
+     * This method loads environments from <LEROY_HOME>/environments.xml
      * @return
      */
     public List<EnvironmentBean> loadAndGetEnvironments() {
-        environments = XMLParser.readEnvironments(leroyhome + "/environments.xml");
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        if (LeroyUtils.isNodeAvailable(node)) {
+            FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
+            try {
+                environments = leroyHomePath.act(new LeroyUtils.ReadEnvironments());
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
         return environments;
     }
 
@@ -140,7 +131,15 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
     }
 
     public List<AgentBean> getInstalledAgents() {
-        installedAgents = XMLParser.readAgents(leroyhome + "/agents.xml");
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        if (LeroyUtils.isNodeAvailable(node)) {
+            FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
+            try {
+                installedAgents = leroyHomePath.act(new LeroyUtils.ReadAgents());
+            } catch (Exception e){
+                System.out.println(e);
+            }
+        }
         return installedAgents;
     }
 
@@ -148,26 +147,58 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         this.installedAgents = installedAgents;
     }
 
-    private void updateAgentsXml() {
-        if (installedAgents == null) {
+    /**
+     * This method writes agents configuration to <code>agents.xml</code> file on a proper leroy node
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void updateAgentsXml() throws IOException, InterruptedException {
+        if (CollectionUtils.isEmpty(installedAgents)) {
             return;
         }
-        String agentsXml = leroyhome + "/agents.xml";
-        XMLParser.saveAgents(installedAgents, agentsXml);
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        if (LeroyUtils.isNodeAvailable(node)) {
+            FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
+            leroyHomePath.act(new SaveAgents(installedAgents));
+        }
     }
 
-
-    private void updateEnvironmentsXml() {
+    /**
+     * This method writes environments configuration to <code>environments.xml</code> file on a proper leroy node
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void updateEnvironmentsXml() throws IOException, InterruptedException {
         if (CollectionUtils.isEmpty(environments)) {
             return;
         }
-        String xmlFile = leroyhome + "/environments.xml";
-        XMLParser.saveEnvironments(environments, xmlFile);
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        if (LeroyUtils.isNodeAvailable(node)) {
+            FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
+            leroyHomePath.act(new LeroyUtils.SaveEnvironments(environments));
+        }
     }
 
-    private synchronized ControllerBean getControllerBean() {
-        return XMLParser.readController(leroyhome + "/controller.xml");
+    /**
+     * This method writes controller configuration to <code>controller.xml</code> file on a proper leroy node
+     * @throws IOException
+     * @throws InterruptedException
+     */
+    private void updateControllerXml() throws IOException, InterruptedException {
+        ControllerBean controller = new ControllerBean();
+        controller.setHost(controllerHost);
+        controller.setPort(controllerPort);
+        controller.setBind(controllerBind);
+        controller.setLogFile(controllerLogFile);
+        controller.setLogLevel(controllerLogLevel);
+        controller.setAgentsCheckinTimeout(controllerTimeout);
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        if (LeroyUtils.isNodeAvailable(node)) {
+            FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
+            leroyHomePath.act(new LeroyUtils.SaveController(controller));
+        }
     }
+
 
     public String getLeroyhome() {
         return leroyhome;
@@ -177,56 +208,78 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         return architecture;
     }
 
+    public String getNodeName() {
+        return nodeName;
+    }
+
+    public void setNodeName(String nodeName) {
+        this.nodeName = nodeName;
+    }
+
     public String getControllerHost() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getHost())) {
-            String host = "127.0.0.1";
+        if (StringUtils.isEmpty(controllerHost)) {
+            controllerHost = "127.0.0.1";
             try {
-                host = InetAddress.getLocalHost().getHostAddress();
-            } catch (Throwable e) {
-                // omit
+               Node node = LeroyUtils.findNodeByName(nodeName);
+               if (node != null) {
+                    controllerHost = LeroyUtils.getHostAddress(new FilePath(node.getChannel(),leroyhome));
+               }
+            } catch (Exception e) {
+                controllerHost = "127.0.0.1";
+                LOGGER.log(Level.SEVERE, "Error getting controller host. Set Controller Host to 127.0.0.1", e);
             }
-            return host;
         }
-        return getControllerBean().getHost();
+        return controllerHost;
     }
 
     public String getControllerPort() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getPort())) {
-            return "1337";
+        if (StringUtils.isEmpty(controllerPort)) {
+            controllerPort = "1337";
         }
-        return getControllerBean().getPort();
+        return controllerPort;
     }
 
     public String getControllerBind() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getBind())) {
-            return "0.0.0.0";
+        if (StringUtils.isEmpty(controllerBind)) {
+            controllerBind = "0.0.0.0";
         }
-        return getControllerBean().getBind();
+        return controllerBind;
     }
 
     public String getControllerLogFile() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getLogFile())) {
-            return "controller.log";
+        if (StringUtils.isEmpty(controllerLogFile)) {
+            controllerLogFile = "controller.log";
         }
-        return getControllerBean().getLogFile();
+        return controllerLogFile;
     }
 
     public String getControllerLogLevel() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getLogLevel())) {
-            return "error";
+        if (StringUtils.isEmpty(controllerLogLevel)) {
+            controllerLogLevel = "error";
         }
-        return getControllerBean().getLogLevel();
+        return controllerLogLevel;
     }
 
     public String getControllerTimeout() {
-        if (getControllerBean() == null || StringUtils.isEmpty(getControllerBean().getAgentsCheckinTimeout())) {
-            return "15";
+        if (StringUtils.isEmpty(controllerTimeout)) {
+            controllerTimeout = "15";
         }
-        return getControllerBean().getAgentsCheckinTimeout();
+        return controllerTimeout;
     }
 
     public String getControllerVersion() {
-        return LeroyUtils.getControllerVersion(getLeroyhome());
+        Node node = LeroyUtils.findNodeByName(nodeName);
+        String version = null;
+        if (LeroyUtils.isNodeAvailable(node)) {
+            version = LeroyUtils.getControllerVersion(node, new FilePath(node.getChannel(),leroyhome));
+        } else {
+            return "Node is unavailable";
+        }
+        if (StringUtils.isEmpty(version) || "N/A".equalsIgnoreCase(version)) {
+            return "Leroy has not been properly installed.";
+        } else {
+            return "v" + version.trim() + " of Leroy is properly installed";
+        }
     }
 
     @Override
@@ -271,27 +324,14 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         }
 
         // update files in LEROY_HOME directory
-        prop.updateControllerXml();
-        prop.updateAgentsXml();
-        prop.updateEnvironmentsXml();
- 
-        return prop;
-    }
-
-    /**
-     * @return internal address of the slave hosting this node or 127.0.0.1 if cannot define it
-     */
-    public String getDefaultControllerAddress() {
-        String defautlAddr = "127.0.0.1";
         try {
-            InetAddress localhost = InetAddress.getLocalHost();
-            if (localhost != null) {
-                defautlAddr = localhost.getHostAddress();
-            }
+            prop.updateControllerXml();
+            prop.updateAgentsXml();
+            prop.updateEnvironmentsXml();
         } catch (Exception e) {
-            Logger.getLogger(LeroyNodeProperty.class.getName()).log(Level.SEVERE, "Cannot get the address of the local host", e);
+            LOGGER.log(Level.SEVERE, "Cannot update configuration files.", e);
         }
-        return defautlAddr;
+        return prop;
     }
 
     /**
@@ -328,7 +368,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             return doFillArchitectureItems();
         }
 
-        public FormValidation doAddAgent(@QueryParameter("leroyhome") final String leroyHome,
+        public FormValidation doAddAgent(@QueryParameter("nodeName") final String nodeName,
+                                         @QueryParameter("leroyhome") final String leroyHome,
                                          @QueryParameter("agentName") final String agentName,
                                          @QueryParameter("agentPlatform") final String agentPlatform,
                                          @QueryParameter("agentLockerpath") final String agentLockerpath,
@@ -345,8 +386,13 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 return FormValidation.error("Please provide a name of the agent");
             }
 
+            Node node = LeroyUtils.findNodeByName(nodeName);
+            if (!LeroyUtils.isNodeAvailable(node)) {
+                return FormValidation.error(Constants.CANNOT_ESTABLISH_CONNECTION);
+            }
+
             try {
-                Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
+                Launcher launcher = node.createLauncher(TaskListener.NULL);
                 int returnCode = 0;
                 List<String> cmds = new ArrayList<String>();
                 cmds.add(leroyHome + "/controller");
@@ -360,14 +406,41 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                     cmds.add(agentLockerpath);
                 }
                 returnCode = launcher.launch().pwd(leroyHome).envs(Functions.getEnvVars()).cmds(cmds).stdout(output).join();
-
                 if (returnCode != 0) {
-                    return FormValidation.error("Cannot add agent " + output);
+                    return FormValidation.error("Cannot add agent: " + output);
+                } else {
+                    LeroyNodeProperty prop = (LeroyNodeProperty) node.getNodeProperties().get(this);
+                    List<AgentBean> agents = prop.getInstalledAgents();
+                    if (CollectionUtils.isEmpty(agents)) {
+                        prop.setInstalledAgents(new ArrayList<AgentBean>(){{add(new AgentBean(agentName, agentLockerpath, null, null, null));}});
+                    } else {
+                        agents.add(new AgentBean(agentName, agentLockerpath, null, null, null));
+                    }
                 }
+                String bundleName = agentName + "-" + agentPlatform + ".zip";
 
                 // if we need to install it via ssh
-                if ("true".equalsIgnoreCase(sshInstall)) {
-                    String bundleName = agentName + "-" + agentPlatform + ".zip";
+                if (!"true".equalsIgnoreCase(sshInstall)) {
+                    if (returnCode == 0) {
+                        String result = "Generated: " + new File(leroyHome, bundleName).getAbsoluteFile() + "\n" +
+                                "To manually install agent, copy and extract this zip file " +
+                                "to your host and run the agent binary."; //TODO externalize
+                        return FormValidation.ok(result);
+                    }
+                } else {
+                    cmds = new ArrayList<String>();
+                    cmds.add("--ssh-install");
+                    cmds.add(bundleName);
+                    cmds.add("--ssh-host");
+                    cmds.add(sshHost);
+                    cmds.add("--ssh-port");
+                    cmds.add(sshPort);
+                    cmds.add("--ssh-user");
+                    cmds.add(sshUser);
+                    cmds.add("--ssh-pass");
+                    cmds.add(sshPass);
+                    cmds.add("--ssh-destdir");
+                    cmds.add(sshDest);
                     returnCode = launcher.launch().envs(Functions.getEnvVars()).pwd(leroyHome)
                             .cmds(leroyHome + "/controller"
                                     , "--ssh-install", bundleName
@@ -379,7 +452,9 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 }
 
                 if (returnCode == 0) {
-                    return FormValidation.ok("Success");
+                    String result = "Generated: " + new File(leroyHome, bundleName).getAbsoluteFile() + "\n" +
+                            "Installed via SSH"; //TODO externalize
+                    return FormValidation.ok(result);
                 }
                 return FormValidation.error("Failed to install agent via SSH" + output);
 
@@ -390,25 +465,26 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
 
         public FormValidation doUpdateController(@QueryParameter("architecture") String architecture,
-                                            @QueryParameter("leroyhome") String leroyhome) {
+                                                @QueryParameter("leroyhome") String leroyhome,
+                                                @QueryParameter String nodeName) {
             //get update file from server
             try {
                 Update update = XMLParser.readUpdate();
                 if (update != null) {
                     // get controller version
-                    String controllerVersion = LeroyUtils.getControllerVersion(leroyhome);
+                    Node node = LeroyUtils.findNodeByName(nodeName);
+                    if (node == null) {
+                        return FormValidation.error("Cannot find an appropriate node");
+                    }
+                    FilePath leroyHomeDir = new FilePath(node.getChannel(), leroyhome);
+                    String controllerVersion = LeroyUtils.getControllerVersion(node, leroyHomeDir);
                     if (controllerVersion.equalsIgnoreCase(String.valueOf(update.getVersion()))) {
                         return FormValidation.warning("Controller has last version: '" + update.getVersion() + "'");
                     }
                     String binary = update.getBinaries().get(architecture);
                     if (binary != null) {
-                        File archive = LeroyUtils.downloadFile(binary);
-                        // create leroyHome if necessary
-                        File leroyHomeFile = new File(leroyhome);
-                        if (!leroyHomeFile.exists()) {
-                            leroyHomeFile.mkdirs();
-                        }
-                        LeroyUtils.unpack(archive, new File(leroyhome));
+                        FilePath temp = LeroyUtils.downloadFile(binary, node);
+                        LeroyUtils.unpack(temp, leroyHomeDir);
                     }
                 } else {
                     return FormValidation.error("Cannot get update from server. Please try later.");
@@ -419,12 +495,29 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             return FormValidation.ok("Controller is updated successfully");
         }
 
-        public FormValidation doCheckLeroyhome(@QueryParameter String value)
+        public FormValidation doCheckLeroyhome(@QueryParameter final String value, @QueryParameter String nodeName)
                 throws IOException, ServletException {
+            // check for null
             if (value.length() == 0) {
                 return FormValidation.error("Please provide a path for leroy plugin");
-            } else if (!canWrite(value)) {
-                return FormValidation.error("Cannot write to folder. Please check if folder exists/user has write permissions on this folder");
+            }
+
+            // is directory exists and writable
+            try {
+                Node node = LeroyUtils.findNodeByName(nodeName);
+                if (!LeroyUtils.isNodeAvailable(node)) {
+                    return FormValidation.error("Couldn't establish connection to node");
+                }
+                FilePath leroyHome = new FilePath(node.getChannel(), value);
+                if (!leroyHome.exists()) {
+                    return FormValidation.warning("Folder doesn't exist.");
+                }
+                if (!LeroyUtils.canWrite(leroyHome)) {
+                    return FormValidation.error("Cannot write to folder. Please check if user has write permissions on this folder");
+                }
+            } catch (Throwable t) {
+                LOGGER.log(Level.SEVERE, "Cannot access node", t);
+                return FormValidation.error("Cannot access node");
             }
             return FormValidation.ok();
         }
@@ -437,28 +530,31 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             return FormValidation.ok();
         }
 
-        public String getHelpPage() {
-            // yes, I know this is a hack.
-            ComputerSet object = Stapler.getCurrentRequest().findAncestorObject(ComputerSet.class);
-
-            if (object != null) {
-                // we're on a node configuration page, show show that help page
-                return "/help/system-config/nodeEnvironmentVariables.html";
-            } else {
-                // show the help for the global config page
-                return "/help/system-config/globalEnvironmentVariables.html";
-            }
-        }
-
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             save();
             return super.configure(req, formData);
         }
 
-        private boolean canWrite(String path) {
-            File f = new File(path);
-            return f.canWrite();
+    }
+
+    /**
+     * This class is used to save agents remotely to agents.xml in a given directory
+     */
+    public static class SaveAgents implements FilePath.FileCallable<Void> {
+        private static final long serialVersionUID = 1;
+
+        private List<AgentBean> agents;
+
+        public SaveAgents(List<AgentBean> agents) {
+            this.agents = agents;
+        }
+
+        @Override
+        public Void invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
+            File agentsXml = new File(f, "agents.xml");
+            XMLParser.saveAgents(agents, agentsXml.getAbsolutePath());
+            return null;
         }
     }
 

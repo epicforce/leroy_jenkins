@@ -12,8 +12,6 @@ import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
 
-import java.util.List;
-
 /**
  * Created by user on 27.07.2014.
  */

@@ -4,6 +4,7 @@ import javax.xml.bind.annotation.XmlAccessType;
 import javax.xml.bind.annotation.XmlAccessorType;
 import javax.xml.bind.annotation.XmlElement;
 import javax.xml.bind.annotation.XmlRootElement;
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,7 +13,9 @@ import java.util.List;
  */
 @XmlRootElement(name="agents")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class AgentsInEnvironmentBean {
+public class AgentsInEnvironmentBean implements Serializable {
+
+    private static final long serialVersionUID = 1024177132823035785L;
 
     @XmlElement(name = "agent", type = AgentInEnvironmentBean.class)
     private List<AgentInEnvironmentBean> agents = new ArrayList<AgentInEnvironmentBean>();

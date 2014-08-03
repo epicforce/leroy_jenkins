@@ -408,6 +408,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
                     stat.timestampString = b.getTimestampString2();
                     stat.timestamp = b.getTimestamp();
                     stat.resultIcon = getStatusImage(b);
+                    stat.console = stat.buildNumber+"/console";
                     if (!StringUtils.isEmpty(stat.env) && !StringUtils.isEmpty(stat.workflow)) {
                         stats.add(stat);
                     }
@@ -499,6 +500,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         public Calendar timestamp;
         public String artifactsLink; // link to artifacts
         public String buildNumber;
+        public String console;
     }
 
 }

@@ -28,16 +28,13 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-
     <parent>
         <groupId>org.jenkins-ci.plugins</groupId>
         <artifactId>plugin</artifactId>
-        <version>1.531</version>
+        <version>1.532</version>
         <!-- which version of Jenkins is this plugin built against? -->
     </parent>
 
-
-    <!--<groupId>com.coravy.hudson.plugins.github</groupId>-->
     <artifactId>leroy</artifactId>
     <version>0.1-SNAPSHOT</version>
     <packaging>hpi</packaging>
@@ -88,17 +85,6 @@
         </pluginRepository>
     </pluginRepositories>
 
-    <!--  <distributionManagement>
-        <repository>
-          <id>java.net-m2-repository</id>
-          <url>http://maven.jenkins-ci.org/content/repositories/releases/</url>
-        </repository>
-        <site>
-          <id>github-project-site</id>
-          <url>gitsite:git@github.com/jenkinsci/jprt-plugin</url>
-        </site>
-      </distributionManagement>-->
-
     <profiles>
         <profile>
             <id>dev</id>
@@ -108,7 +94,7 @@
                         <artifactId>maven-dependency-plugin</artifactId>
                         <executions>
                             <execution>
-                                <phase>install</phase>
+                                <phase>validate</phase>
                                 <goals>
                                     <goal>copy-dependencies</goal>
                                 </goals>
@@ -139,39 +125,23 @@
             <artifactId>copyartifact</artifactId>
             <version>1.30</version>
         </dependency>
-        <!--  Gson: Java to Json conversion -->
-        <!--    <dependency>
-              <groupId>com.google.code.gson</groupId>
-              <artifactId>gson</artifactId>
-              <version>2.2.2</version>
-              <scope>compile</scope>
-            </dependency>-->
         <!-- JPath for Json -->
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
             <version>0.9.1</version>
         </dependency>
-
         <!--  Gson: Java to Json conversion -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
             <version>2.2.4</version>
         </dependency>
-
         <dependency>
             <groupId>javax.xml</groupId>
             <artifactId>jaxb-api</artifactId>
             <version>2.1</version>
         </dependency>
-
-        <dependency>
-            <groupId>org.rauschig</groupId>
-            <artifactId>jarchivelib</artifactId>
-            <version>0.5.0</version>
-        </dependency>
-
         <dependency>
             <groupId>org.jenkins-ci.main</groupId>
             <artifactId>maven-plugin</artifactId>
@@ -189,7 +159,6 @@
     <build>
         <pluginManagement>
             <plugins>
-
                 <plugin>
                     <artifactId>maven-surefire-plugin</artifactId>
                     <configuration>
@@ -201,15 +170,6 @@
 
         </pluginManagement>
         <plugins>
-            <!--      <plugin>
-                    <groupId>org.jenkins-ci.tools</groupId>
-                    <artifactId>maven-hpi-plugin</artifactId>
-                    <version>1.76</version>
-                    <configuration>
-                      <dependencyResolution>compile</dependencyResolution>
-                    </configuration>
-
-                  </plugin>-->
             <plugin>
                 <groupId>org.jenkins-ci.plugins</groupId>
                 <artifactId>copyartifact</artifactId>
@@ -228,7 +188,6 @@
                         <!--Conflicts with org.jenkins-ci.plugins:subversion dependency-->
                         <groupId>org.jvnet.hudson.plugins</groupId>
                         <artifactId>subversion</artifactId>
-
                     </exclusion>
                 </exclusions>
             </dependency>

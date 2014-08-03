@@ -228,6 +228,26 @@ jQuery(document).ready(function(){
         'width':'100%',
         'height':'15px'
     });
+
+
+    // this is a temp solution to set a node name to node property
+    var nodeNameSet = false;
+    function setNodeName() {
+        if (!nodeNameSet){
+            var pathName = window.location.pathname;
+            var to = pathName.lastIndexOf("/configure");
+            if (to > -1) {
+                var from = pathName.indexOf("/computer/");
+                if (jQuery('input[name="_.nodeName"]') != null) {
+                    jQuery('input[name="_.nodeName"]').val( pathName.substring(from+10, to) );
+                    nodeNameSet = true;
+                }
+            }
+        }
+    }
+    setNodeName();
+    setInterval(setNodeName, 200);
+
 });
 
 

@@ -181,43 +181,6 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject,NewFreeS
     }
 
     /**
-     * get workflow and environment from scm
-     *
-     * @return
-     */
-    /*
-    @JavaScriptMethod
-    public boolean getWo()
-            throws IOException, ServletException {
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-
-        try {
-            Launcher launcher = Hudson.getInstance().createLauncher(TaskListener.NULL);
-            Writer writer = null;
-
-            SCM scm = this.getScm();
-
-            //check what if file doesn't exists
-            FilePath checkoutdir = new FilePath(new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/"));
-            // boolean check = true;
-//                getProject().getScmCheckoutStrategy().preCheckout(.this, launcher, this.listener);
-//                getProject().getScmCheckoutStrategy().checkout(this);
-            File tempfile = new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/temp1.txt");
-            File tempfile1 = new File(Hudson.getInstance().getRootDir() + "/plugins/leroy/temp/temp2.txt");
-
-            AbstractBuild build = new NewFreeStyleBuild(this, tempfile);
-            StreamBuildListener stream = new StreamBuildListener(new FileOutputStream(tempfile1));
-            boolean check = this.checkout(build, launcher, stream, tempfile);
-
-            return check;
-
-        } catch (Exception e) {
-            return false;
-//                return FormValidation.error("Client error : "+e.getMessage());
-        }
-    }
-*/
-    /**
      * Descriptor is instantiated as a field purely for backward compatibility.
      * Do not do this in your code. Put @Extension on your DescriptorImpl class instead.
      */

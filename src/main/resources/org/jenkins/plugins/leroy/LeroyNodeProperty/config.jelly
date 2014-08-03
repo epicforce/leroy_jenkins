@@ -4,30 +4,34 @@
   <script src="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.js"/>
   <link rel="stylesheet" type="text/css" href="${rootURL}/plugin/leroy/js/tagsinput/jquery.tagsinput.css" />
 
-
     <f:section title="Environment Settings">
     <f:block>
+        <f:invisibleEntry>
+            <input type="hidden" name="_.nodeName" value="${instance.getNodeName()}"/>
+        </f:invisibleEntry>
         <f:entry title="Leroy Home Directory" field="leroyhome" >
           <f:textbox />
         </f:entry>
         <f:entry title="System Architecture" field="architecture" >
             <f:select />
         </f:entry>
-        <f:entry title="Controller version" field="controllerVersion" >
-            <f:readOnlyTextbox />
+        <f:entry title="Controller version" field="controllerVersion"  >
+            <f:readOnlyTextbox/>
         </f:entry>
     </f:block>
     <f:block>
         <f:validateButton
                 title="${%Update Controller}" progress="${%Updating...}"
-                method="updateController" with="architecture,leroyhome" />
+                method="updateController" with="architecture,leroyhome,nodeName" />
     </f:block>
   </f:section>
 
+<!-- if leroy_home is specified then we assume customer have decided where controller should run and, hence, we can show the sections below -->
+  <j:if test="${instance.getLeroyhome() != null and instance.getLeroyhome() != ''}">
     <f:section title="Controller Settings">
         <f:block>
             <f:entry title="Host" field="controllerHost" >
-                <f:textbox default="${instance.getDefaultControllerAddress}"/>
+                <f:textbox/>
             </f:entry>
             <f:entry title="Port" field="controllerPort" >
                 <f:textbox default="1337" />
@@ -114,7 +118,7 @@
         </f:block>
         <f:validateButton
                 title="${%Add Agent}" progress="${%Adding...}"
-                method="addAgent" with="leroyhome,agentName,agentPlatform,agentLockerpath,sshHost,sshPort,sshUser,sshPass,sshDest,sshInstall" />
+                method="addAgent" with="nodeName,leroyhome,agentName,agentPlatform,agentLockerpath,sshHost,sshPort,sshUser,sshPass,sshDest,sshInstall" />
     </f:section>
 
     <j:if test="${instance.getInstalledAgents().size()>0}">
@@ -148,5 +152,5 @@
             </f:block>
         </f:section>
     </j:if>
-
+  </j:if>
 </j:jelly>  

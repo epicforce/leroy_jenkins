@@ -65,6 +65,7 @@ THE SOFTWARE.
             <th>${%Deployer}</th>
             <th>${%Timestamp}</th>
             <th>${%Artifacts}</th>
+            <th>${%Console}</th>
         </tr>
         <j:forEach var="stat" items="${it.jobStats}">
             <tr>
@@ -74,6 +75,7 @@ THE SOFTWARE.
                 <td><a href="/user/${stat.deployer}">${stat.deployer}</a></td>
                 <td>${stat.timestampString}</td>
                 <td><a href="${stat.artifactsLink}" class="datatable_artifact">${%Artifacts}</a></td>
+                <td><a href="${stat.console}" class="datatable_console">${%Console output}</a></td>
             </tr>
         </j:forEach>
     </table>
