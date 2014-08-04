@@ -6,6 +6,7 @@ import hudson.model.ParameterValue;
 import hudson.model.PasswordParameterDefinition;
 import hudson.util.Secret;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -55,7 +56,7 @@ public class LeroyPasswordParameterDefinition extends PasswordParameterDefinitio
 
         @Override
         public String getHelpFile() {
-            return "/help/parameter/string.html";
+            return "/plugin/" + Constants.PLUGIN_NAME + "/parameters/password.html";
         }
     }
 

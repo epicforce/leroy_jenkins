@@ -5,6 +5,8 @@ public class Constants {
     public static final String LEROY_HOME = "LEROY_HOME";
     public static final String IS_LEROY_NODE = "IS_LEROY_NODE";
 
+    public static final String PLUGIN_NAME = "leroy";
+
     public static final String ENVIRONMENT_PARAM = "Environment";
     public static final String WORKFLOW_PARAM = "Workflow";
     public static final String CONFIG_SOURCE_PARAM = "Configuration Source";

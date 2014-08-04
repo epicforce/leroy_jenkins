@@ -5,6 +5,7 @@ import hudson.model.ParameterDefinition;
 import hudson.model.ParameterValue;
 import hudson.model.StringParameterDefinition;
 import net.sf.json.JSONObject;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.StaplerRequest;
 
@@ -47,7 +48,7 @@ public class LeroyStringParameterDefinition extends StringParameterDefinition {
 
         @Override
         public String getHelpFile() {
-            return "/help/parameter/string.html";
+            return "/plugin/" + Constants.PLUGIN_NAME + "/parameters/string.html";
         }
     }
 

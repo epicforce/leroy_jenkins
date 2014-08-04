@@ -8,6 +8,7 @@ import hudson.model.StringParameterValue;
 import hudson.util.FormValidation;
 import net.sf.json.JSONObject;
 import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.leroy.util.Constants;
 import org.kohsuke.stapler.DataBoundConstructor;
 import org.kohsuke.stapler.QueryParameter;
 import org.kohsuke.stapler.StaplerRequest;
@@ -23,7 +24,6 @@ public class LeroyChoiceParameterDefinition extends ChoiceParameterDefinition {
         String strippedChoices = choices.trim();
         return !StringUtils.isEmpty(strippedChoices) && strippedChoices.split(CHOICES_DELIMETER).length > 0;
     }
-
 
     @DataBoundConstructor
     public LeroyChoiceParameterDefinition(String name, String choices, String description) {
@@ -78,7 +78,7 @@ public class LeroyChoiceParameterDefinition extends ChoiceParameterDefinition {
 
         @Override
         public String getHelpFile() {
-            return "/help/parameter/choice.html";
+            return "/plugin/" + Constants.PLUGIN_NAME + "/parameters/choice.html";
         }
 
         /**
