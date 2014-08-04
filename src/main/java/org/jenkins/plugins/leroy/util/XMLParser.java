@@ -185,7 +185,7 @@ public class XMLParser {
         try {
             JAXBContext jc = JAXBContext.newInstance(ControllerBean.class);
             Unmarshaller u = jc.createUnmarshaller();
-            ControllerBean c = (ControllerBean)u.unmarshal(new File(controllerXml));
+            ControllerBean c = (ControllerBean) u.unmarshal(new File(controllerXml));
             return c;
         } catch (JAXBException e) {
             e.printStackTrace(); // TODO handle

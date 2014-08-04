@@ -173,14 +173,14 @@ public class JsonUtils {
         List<LeroyBuilder.Target> result = new ArrayList<LeroyBuilder.Target>();
 
         String leroyBuilderJson = getLeroyBuilderJSON(jsonForm);
-        Object targetsObj = (Object)JsonPath.read(leroyBuilderJson, "$.[0].targets");
+        Object targetsObj = (Object) JsonPath.read(leroyBuilderJson, "$.[0].targets");
         if (targetsObj != null) {
             if (targetsObj instanceof JSONObject) {
-                result.add(populateTarget((JSONObject)targetsObj));
+                result.add(populateTarget((JSONObject) targetsObj));
             } else {
-                JSONArray targets = (JSONArray)targetsObj;
+                JSONArray targets = (JSONArray) targetsObj;
                 for (int i = 0; i < targets.size(); i++) {
-                    JSONObject target = (JSONObject)targets.get(i);
+                    JSONObject target = (JSONObject) targets.get(i);
                     if (target != null) {
                         result.add(populateTarget(target));
                     }
@@ -192,10 +192,10 @@ public class JsonUtils {
 
     private static LeroyBuilder.Target populateTarget(JSONObject jsonTarget) {
         LeroyBuilder.Target t = new LeroyBuilder.Target();
-        t.workflow = (String)jsonTarget.get("workflow");
-        t.environment = (String)jsonTarget.get("environment");
-        t.configSource = (String)jsonTarget.get("configSource");
-        t.autoDeploy = (Boolean)jsonTarget.get("autoDeploy");
+        t.workflow = (String) jsonTarget.get("workflow");
+        t.environment = (String) jsonTarget.get("environment");
+        t.configSource = (String) jsonTarget.get("configSource");
+        t.autoDeploy = (Boolean) jsonTarget.get("autoDeploy");
         return t;
     }
 
@@ -223,7 +223,6 @@ public class JsonUtils {
         }
         return t;
     }
-
 
 
     // temporary, for development

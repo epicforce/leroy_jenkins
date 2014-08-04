@@ -82,11 +82,16 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         this.useLastBuildWithSameTarget = useLastBuildWithSameTarget;
     }
 
+    /**
+     * This method is used to find Leroy-specific build parameters aamong all build parameters
+     * @param b is a build
+     * @return the list of Leroy parameters
+     */
     private List<ParameterValue> findLeroyParameterValues(AbstractBuild b) {
         ParametersAction paramAction = b.getAction(ParametersAction.class);
         List<ParameterValue> values = new ArrayList<ParameterValue>();
         for (ParameterValue v : paramAction.getParameters()) {
-            if (v instanceof LeroyPasswordParameterValue || v instanceof LeroyStringParameterValue ) {
+            if (v instanceof LeroyPasswordParameterValue || v instanceof LeroyStringParameterValue) {
                 values.add(v);
             }
         }
@@ -94,6 +99,16 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
     }
 
 
+    /**
+     * This method performs the deployment via leroy.
+     * @param build
+     * @param launcher
+     * @param listener
+     * @return true if succeeded
+     * @throws IOException
+     * @throws InterruptedException
+     * @throws OutOfMemoryError
+     */
     @Override
     public boolean perform(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException, OutOfMemoryError {
         EnvVars envs = build.getEnvironment(listener);
@@ -166,7 +181,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         for (ParameterValue leroyParamValue : leroyParameValues) {
             cmds.add("--add-global-property");
             String key = leroyParamValue.getName();
-            String value = (String)build.getBuildVariables().get(key);
+            String value = (String) build.getBuildVariables().get(key);
             cmds.add(key + "=" + value);
         }
 
@@ -177,12 +192,15 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         log.println("Deploy - success!");
 
         // archive configurations
-        Map<String,String> files = LeroyUtils.listFiles(leroyHome, "commands/**,workflows/**,properties/**,environments/**,*.xml,*.key,*.pem,*.crt", "");
+        Map<String, String> files = LeroyUtils.listFiles(leroyHome, "commands/**,workflows/**,properties/**,environments/**,*.xml,*.key,*.pem,*.crt", "");
         build.getArtifactManager().archive(leroyHome, launcher, listener, files);
         log.println("Archive artifacts - success!");
         return returnCode == 0;
     }
 
+    /**
+     * @return the descriptor of Leroy Build Step
+     */
     @Override
     public DescriptorImpl getDescriptor() {
         DescriptorImpl descr = (DescriptorImpl) super.getDescriptor();
@@ -223,7 +241,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
             if (node != null) {
                 for (NodeProperty<?> nodeProperty : node.getNodeProperties()) {
                     if (nodeProperty instanceof LeroyNodeProperty) {
-                        envs = ((LeroyNodeProperty)nodeProperty).getEnvironments();
+                        envs = ((LeroyNodeProperty) nodeProperty).getEnvironments();
                     }
                 }
             }
@@ -240,12 +258,14 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
             ListBoxModel items = new ListBoxModel();
             try {
                 List<Computer> leroyNodes = LeroyUtils.getLeroyNodes();
-                for (Computer comp : leroyNodes) {
-                    // handle master node separately
-                    if (comp instanceof Hudson.MasterComputer) {
-                        items.add(Constants.MASTER_NODE, Constants.MASTER_NODE);
-                    } else {
-                        items.add(comp.getName(), comp.getName());
+                if (!CollectionUtils.isEmpty(leroyNodes)) {
+                    for (Computer comp : leroyNodes) {
+                        // handle master node separately
+                        if (comp instanceof Hudson.MasterComputer) {
+                            items.add(Constants.MASTER_NODE, Constants.MASTER_NODE);
+                        } else {
+                            items.add(comp.getName(), comp.getName());
+                        }
                     }
                 }
             } catch (Exception e) {
@@ -257,16 +277,20 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         /**
          * Get the list of workflows and fill workflow select list in Leroy Build step
          * Called from main.jelly
+         *
          * @return
          */
         public ListBoxModel doFillWorkflowItems() {
             ListBoxModel items = new ListBoxModel();
-            for (String wf : workflows) {
-                items.add(wf, wf);
+            if (!CollectionUtils.isEmpty(workflows)) {
+                for (String wf : workflows) {
+                    items.add(wf, wf);
+                }
             }
             return items;
         }
 
+        @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             if (NewFreeStyleProject.class.isAssignableFrom(aClass)) {
                 return true;
@@ -277,6 +301,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         /**
          * This human readable name is used in the configuration screen.
          */
+        @Override
         public String getDisplayName() {
             return "Leroy"; //TODO externalize
         }
@@ -288,7 +313,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         }
     }
 
-    public static class Target{
+    public static class Target {
         public String environment;
         public String workflow;
         public String configSource;
@@ -303,7 +328,6 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         }
 
         public Target() {
-
         }
 
         @Override

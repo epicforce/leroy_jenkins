@@ -19,7 +19,7 @@ public class ListWrapper<T> {
         this.items = items;
     }
 
-    @XmlAnyElement(lax=true)
+    @XmlAnyElement(lax = true)
     public List<T> getItems() {
         return items;
     }

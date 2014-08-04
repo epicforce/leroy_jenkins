@@ -13,7 +13,7 @@ import java.util.List;
  * Created by Dzmitry Bahdanovich on 04.07.14.
  */
 
-@XmlRootElement(name="environment")
+@XmlRootElement(name = "environment")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class EnvironmentBean implements Serializable {
 

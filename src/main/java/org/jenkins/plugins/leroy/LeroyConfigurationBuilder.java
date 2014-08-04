@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
-* Builder class for Leroy Configuration build step
+ * Builder class for Leroy Configuration build step
  */
 public class LeroyConfigurationBuilder extends AbstractLeroyBuilder {
 
@@ -40,7 +40,7 @@ public class LeroyConfigurationBuilder extends AbstractLeroyBuilder {
     }
 
     @Override
-    public boolean perform(AbstractBuild<?,?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+    public boolean perform(AbstractBuild<?, ?> build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
 
         PrintStream log = listener.getLogger();
 
@@ -65,7 +65,7 @@ public class LeroyConfigurationBuilder extends AbstractLeroyBuilder {
         if (returnCode == 0) {
             // archive
             generatedConfigs.zip(new FilePath(ws, "configurations.zip"));
-            Map<String,String> files = LeroyUtils.listFiles(ws, "configurations.zip", "");
+            Map<String, String> files = LeroyUtils.listFiles(ws, "configurations.zip", "");
             build.getArtifactManager().archive(ws, launcher, listener, files);
             log.println("Configurations are copied to artifacts successfully!");
         }

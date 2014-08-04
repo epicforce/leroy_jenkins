@@ -64,9 +64,9 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Buildable software project.
- *
- * @author Kohsuke Kawaguchi
+ * Leroy Deployment Project. Has such a non-descriptive name because of historical reasons.
+ * @param <P>
+ * @param <B>
  */
 public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<P, B>>
         extends AbstractProject<P, B> implements SCMedItem, Saveable, ProjectWithMaven, BuildableItemWithBuildWrappers {
@@ -99,7 +99,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
     private List<String> environment;
 
     /**
-     * Creates a new project.
+     * Creates a new deployment project. Has such no descriptive name because of historical reasons
      */
     public NewProject(ItemGroup parent, String name) throws IOException {
         super(parent, name);
@@ -195,7 +195,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
 
         builders = new ArrayList<Builder>(builders);
         if (!containsCopyartifact) {
-            builders.add( new CopyArtifact("", "", new StatusBuildSelector(true), "", "${LEROY_HOME}/artifacts/", false, false, true));
+            builders.add(new CopyArtifact("", "", new StatusBuildSelector(true), "", "${LEROY_HOME}/artifacts/", false, false, true));
         }
         if (!containsLeroy) {
             LeroyBuilder builder = new LeroyBuilder(this.getName(), new ArrayList<LeroyBuilder.Target>(), "", false);
@@ -225,25 +225,6 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         if (publishers == null) {
             publishersSetter.compareAndSet(this, null, new DescribableList<Publisher, Descriptor<Publisher>>(this));
         }
-// ARC
-//        ListIterator<Publisher> ite = publishers.listIterator();
-//        boolean check = false;
-//
-//        while (ite.hasNext()) {
-//            Publisher ele = ite.next();
-//
-//
-//            if (ele instanceof ArtifactArchiver)
-//                check = true;
-//
-//
-//        }
-//
-//        if (!check) {
-//            LeroyArtifactArchiver artifactArchiver = new LeroyArtifactArchiver("*.xml,*.key,*.pem,*.crt,commands/**,workflows/**,properties/**,environments/**", "", false);
-//            publishers.add((Publisher) artifactArchiver);
-//        }
-
         return publishers;
     }
 
@@ -341,7 +322,8 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
     }
 
     /**
-     *
+     * Return information about the latest builds run on each environment/workflow combination
+     * Called from jelly view
      */
     public List<Stat> getJobStats() {
         RunList<B> builds = getBuilds();
@@ -391,24 +373,28 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         return stats;
     }
 
+    /**
+     * This class is used to handle statistics of a build for LEroy Deployment Job
+     * (e.g. select all altest builds for wf/env, get all builds which were run at a specific workflow/env, etc.)
+     */
     public static class StatsHelper {
 
         public static List<Stat> getAllStats(RunList builds) {
             Iterator it = builds.iterator();
             List<Stat> stats = new ArrayList<Stat>();
             while (it.hasNext()) {
-                AbstractBuild b = (AbstractBuild)it.next();
+                AbstractBuild b = (AbstractBuild) it.next();
                 if (!b.isBuilding() && !b.hasntStartedYet() && b.getResult().isCompleteBuild()) {
                     Stat stat = new Stat();
                     stat.buildNumber = String.valueOf(b.getNumber());
-                    stat.artifactsLink = stat.buildNumber+"/artifact/";
+                    stat.artifactsLink = stat.buildNumber + "/artifact/";
                     stat.deployer = getDeployer(b);
                     stat.env = getEnv(b);
                     stat.workflow = getWorkflow(b);
                     stat.timestampString = b.getTimestampString2();
                     stat.timestamp = b.getTimestamp();
                     stat.resultIcon = getStatusImage(b);
-                    stat.console = stat.buildNumber+"/console";
+                    stat.console = stat.buildNumber + "/console";
                     if (!StringUtils.isEmpty(stat.env) && !StringUtils.isEmpty(stat.workflow)) {
                         stats.add(stat);
                     }
@@ -417,35 +403,58 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
             return stats;
         }
 
+        /**
+         * This metod is used to get all leroy builds which were run on specified <code>environment</code>
+         * @param builds
+         * @param env
+         * @return
+         */
         public static List<Stat> getBuildsByEnvironment(RunList builds, final String env) {
+            if (CollectionUtils.isEmpty(builds)) {
+                return new ArrayList<Stat>();
+            }
             List<Stat> stats = StatsHelper.getAllStats(builds);
             CollectionUtils.filter(stats, new Predicate() {
                 @Override
                 public boolean evaluate(Object o) {
-                    Stat stat = (Stat)o;
+                    Stat stat = (Stat) o;
                     return (env.equalsIgnoreCase(stat.env));
                 }
             });
             return stats;
         }
 
+        /**
+         * This metod is used to get all leroy builds which were run on specified <code>workflow</code>
+         * @param builds
+         * @param workflow
+         * @return
+         */
         public static List<Stat> getBuildByWorkflow(RunList builds, final String workflow) {
+            if (CollectionUtils.isEmpty(builds)) {
+                return new ArrayList<Stat>();
+            }
             List<Stat> stats = StatsHelper.getAllStats(builds);
             CollectionUtils.filter(stats, new Predicate() {
                 @Override
                 public boolean evaluate(Object o) {
-                    Stat stat = (Stat)o;
+                    Stat stat = (Stat) o;
                     return (workflow.equalsIgnoreCase(stat.workflow));
                 }
             });
             return stats;
         }
 
-
+        /**
+         * This method selects the latest build for each env/workflow combination,
+         * and return the list of statistics for these builds.
+         * @param builds
+         * @return
+         */
         public static List<Stat> getLastStats(RunList builds) {
             List<Stat> allStats = getAllStats(builds);
             Map<String, Stat> latestStatMap = new HashMap<String, Stat>();
-            for (Stat s : allStats){
+            for (Stat s : allStats) {
                 String key = s.env + "%delim%" + s.workflow;
                 Stat latest = latestStatMap.get(key);
                 if (latest == null) {
@@ -459,15 +468,25 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
             return new ArrayList<Stat>(latestStatMap.values());
         }
 
+        /**
+         * This method returns the deployer of the build
+         * @param build
+         * @return
+         */
         public static String getDeployer(AbstractBuild build) {
             String depl = build.getDescription();
             if (!StringUtils.isEmpty(depl)) {
-            // remove "By: "
+                // remove "By: "
                 return depl.substring(4);
             }
             return "";
         }
 
+        /**
+         * This method return the environment this build was run at
+         * @param build
+         * @return
+         */
         public static String getEnv(AbstractBuild build) {
             String displayName = build.getDisplayName();
             // <env>_<workflow>
@@ -477,20 +496,33 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
             return "";
         }
 
+        /**
+         * This method return the workflow this build was run at
+         * @param build
+         * @return
+         */
         public static String getWorkflow(AbstractBuild build) {
             String displayName = build.getDisplayName();
             // <env>_<workflow>
-            if (! StringUtils.isEmpty(displayName) && displayName.contains("_")) {
+            if (!StringUtils.isEmpty(displayName) && displayName.contains("_")) {
                 return displayName.substring(displayName.indexOf("_") + 1);
             }
             return "";
         }
 
+        /**
+         * Returns build icon. Use the icon for Jenkins icons set
+         * @param build
+         * @return
+         */
         public static String getStatusImage(AbstractBuild build) {
             return build.getIconColor().getImageOf("16x16");
         }
     }
 
+    /**
+     * Represents a build statistics we display on UI for Leroy Deployment Job
+     */
     public static class Stat {
         public String resultIcon;
         public String env;
@@ -498,9 +530,9 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         public String deployer;
         public String timestampString;
         public Calendar timestamp;
-        public String artifactsLink; // link to artifacts
+        public String artifactsLink; // relative link to artifacts
         public String buildNumber;
-        public String console;
+        public String console; // relative link to console "/<build #>/console"
     }
 
 }

@@ -11,16 +11,16 @@ import java.io.Serializable;
 /**
  * Created by Dzmitry Bahdanovich on 19.07.14.
  */
-@XmlRootElement(name="agent")
+@XmlRootElement(name = "agent")
 @XmlAccessorType(XmlAccessType.FIELD)
-public class AgentInEnvironmentBean implements Serializable{
+public class AgentInEnvironmentBean implements Serializable {
 
     private static final long serialVersionUID = -399112613849556948L;
     @XmlAttribute
     private String name;
 
     @XmlAttribute
-    private String roles="";
+    private String roles = "";
 
     @XmlAttribute
     private String id;

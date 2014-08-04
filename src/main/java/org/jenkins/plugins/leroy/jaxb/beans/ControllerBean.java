@@ -9,7 +9,7 @@ import java.io.Serializable;
 /**
  * Created by Dzmitry Bahdanovich on 29.06.14.
  */
-@XmlRootElement(name="controller")
+@XmlRootElement(name = "controller")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class ControllerBean implements Serializable {
 
@@ -27,7 +27,7 @@ public class ControllerBean implements Serializable {
     private String host;
 
     /**
-     *  The IP address the controller binds to. Leave blank to bind to all.
+     * The IP address the controller binds to. Leave blank to bind to all.
      */
     @XmlAttribute
     private String bind;

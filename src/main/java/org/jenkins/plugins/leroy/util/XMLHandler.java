@@ -173,7 +173,7 @@ public class XMLHandler {
     /**
      * Get nodes with a certain tag one level down
      *
-     * @param n   The node to look in
+     * @param n        The node to look in
      * @param tagRegex The tags regex to count
      * @return The list of nodes found which names match a regex
      */

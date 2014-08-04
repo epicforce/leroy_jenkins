@@ -11,7 +11,7 @@ import java.util.List;
 /**
  * Created by Dzmitry Bahdanovich on 19.07.14.
  */
-@XmlRootElement(name="agents")
+@XmlRootElement(name = "agents")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AgentsInEnvironmentBean implements Serializable {
 

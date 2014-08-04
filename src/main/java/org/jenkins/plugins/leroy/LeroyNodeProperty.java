@@ -58,6 +58,7 @@ import java.util.logging.Logger;
 
 /**
  * {@link NodeProperty} that sets additional node properties.
+ *
  * @author Dzmitry Bahdanovich
  * @since 1.286
  */
@@ -107,6 +108,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
     /**
      * This method loads environments from <LEROY_HOME>/environments.xml
+     *
      * @return
      */
     public List<EnvironmentBean> loadAndGetEnvironments() {
@@ -115,7 +117,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
             try {
                 environments = leroyHomePath.act(new LeroyUtils.ReadEnvironments());
-            } catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e);
             }
         }
@@ -136,7 +138,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
             FilePath leroyHomePath = new FilePath(node.getChannel(), leroyhome);
             try {
                 installedAgents = leroyHomePath.act(new LeroyUtils.ReadAgents());
-            } catch (Exception e){
+            } catch (Exception e) {
                 System.out.println(e);
             }
         }
@@ -149,6 +151,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
     /**
      * This method writes agents configuration to <code>agents.xml</code> file on a proper leroy node
+     *
      * @throws IOException
      * @throws InterruptedException
      */
@@ -165,6 +168,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
     /**
      * This method writes environments configuration to <code>environments.xml</code> file on a proper leroy node
+     *
      * @throws IOException
      * @throws InterruptedException
      */
@@ -181,6 +185,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
     /**
      * This method writes controller configuration to <code>controller.xml</code> file on a proper leroy node
+     *
      * @throws IOException
      * @throws InterruptedException
      */
@@ -220,10 +225,10 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         if (StringUtils.isEmpty(controllerHost)) {
             controllerHost = "127.0.0.1";
             try {
-               Node node = LeroyUtils.findNodeByName(nodeName);
-               if (node != null) {
-                    controllerHost = LeroyUtils.getHostAddress(new FilePath(node.getChannel(),leroyhome));
-               }
+                Node node = LeroyUtils.findNodeByName(nodeName);
+                if (node != null) {
+                    controllerHost = LeroyUtils.getHostAddress(new FilePath(node.getChannel(), leroyhome));
+                }
             } catch (Exception e) {
                 controllerHost = "127.0.0.1";
                 LOGGER.log(Level.SEVERE, "Error getting controller host. Set Controller Host to 127.0.0.1", e);
@@ -271,7 +276,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         Node node = LeroyUtils.findNodeByName(nodeName);
         String version = null;
         if (LeroyUtils.isNodeAvailable(node)) {
-            version = LeroyUtils.getControllerVersion(node, new FilePath(node.getChannel(),leroyhome));
+            version = LeroyUtils.getControllerVersion(node, new FilePath(node.getChannel(), leroyhome));
         } else {
             return "Node is unavailable";
         }
@@ -303,7 +308,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
         if (form == null) {
             return null;
         }
-        LeroyNodeProperty prop = (LeroyNodeProperty)getDescriptor().newInstance(req, form);
+        LeroyNodeProperty prop = (LeroyNodeProperty) getDescriptor().newInstance(req, form);
 
         //TODO  move to validator class later
         if (!CollectionUtils.isEmpty(prop.getEnvironments())) {
@@ -412,7 +417,9 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                     LeroyNodeProperty prop = (LeroyNodeProperty) node.getNodeProperties().get(this);
                     List<AgentBean> agents = prop.getInstalledAgents();
                     if (CollectionUtils.isEmpty(agents)) {
-                        prop.setInstalledAgents(new ArrayList<AgentBean>(){{add(new AgentBean(agentName, agentLockerpath, null, null, null));}});
+                        prop.setInstalledAgents(new ArrayList<AgentBean>() {{
+                            add(new AgentBean(agentName, agentLockerpath, null, null, null));
+                        }});
                     } else {
                         agents.add(new AgentBean(agentName, agentLockerpath, null, null, null));
                     }
@@ -465,8 +472,8 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
 
         public FormValidation doUpdateController(@QueryParameter("architecture") String architecture,
-                                                @QueryParameter("leroyhome") String leroyhome,
-                                                @QueryParameter String nodeName) {
+                                                 @QueryParameter("leroyhome") String leroyhome,
+                                                 @QueryParameter String nodeName) {
             //get update file from server
             try {
                 Update update = XMLParser.readUpdate();

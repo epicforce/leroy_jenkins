@@ -145,7 +145,7 @@ public class NewBuild<P extends NewProject<P, B>, B extends NewBuild<P, B>>
             super();
             try {
                 init();
-            } catch (Exception e){
+            } catch (Exception e) {
                 e.printStackTrace();
             }
         }

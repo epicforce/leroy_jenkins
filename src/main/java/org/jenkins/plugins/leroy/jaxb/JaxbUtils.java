@@ -19,7 +19,7 @@ public class JaxbUtils {
      * Unmarshal XML to Wrapper and return List value.
      */
     public static <T> List<T> unmarshal(Unmarshaller unmarshaller,
-                                         Class<T> clazz, String xmlLocation) throws JAXBException {
+                                        Class<T> clazz, String xmlLocation) throws JAXBException {
         StreamSource xml = new StreamSource(xmlLocation);
         ListWrapper<T> wrapper = (ListWrapper<T>) unmarshaller.unmarshal(xml,
                 ListWrapper.class).getValue();

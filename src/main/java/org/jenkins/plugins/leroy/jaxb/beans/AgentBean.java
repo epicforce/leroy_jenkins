@@ -11,7 +11,7 @@ import java.io.Serializable;
 /**
  * Created by Dzmitry Bahdanovich on 06.07.14.
  */
-@XmlRootElement(name="agent")
+@XmlRootElement(name = "agent")
 @XmlAccessorType(XmlAccessType.FIELD)
 public class AgentBean implements Serializable {
 

@@ -83,6 +83,7 @@ public class LeroyUtils {
 
     /**
      * Return LEROY_HOME of a node with a given name
+     *
      * @param nodeName
      * @return
      */
@@ -138,6 +139,7 @@ public class LeroyUtils {
 
     /**
      * Return jenkins node by it's name
+     *
      * @param name
      * @return
      */
@@ -182,10 +184,10 @@ public class LeroyUtils {
 
     public static String runController(String dir, Map<String, String> envs, String[] parameters) throws LeroyException {
         try {
-            String[] command = new String[parameters.length +1];
+            String[] command = new String[parameters.length + 1];
             command[0] = dir + "/controller";
-            for (int i = 0; i <parameters.length; i++) {
-                command[i+1] = parameters[i];
+            for (int i = 0; i < parameters.length; i++) {
+                command[i + 1] = parameters[i];
             }
             ProcessBuilder pb = new ProcessBuilder();
             pb.directory(new File(dir));
@@ -197,8 +199,8 @@ public class LeroyUtils {
 
             BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
             StringBuilder builder = new StringBuilder();
-            String line ;
-            while ( (line = br.readLine()) != null) {
+            String line;
+            while ((line = br.readLine()) != null) {
                 builder.append(line);
                 builder.append(System.getProperty("line.separator"));
             }
@@ -211,12 +213,13 @@ public class LeroyUtils {
     public static String runController(final FilePath leroyHome, final String[] parameters) throws IOException, InterruptedException {
         String result = leroyHome.act(new FilePath.FileCallable<String>() {
             private static final long serialVersionUID = 1L;
+
             public String invoke(File leroyHomeDir, VirtualChannel channel) throws IOException, InterruptedException {
                 Map envs = Functions.getEnvVars();
-                String[] command = new String[parameters.length +1];
+                String[] command = new String[parameters.length + 1];
                 command[0] = new FilePath(leroyHome, "controller").toString();
-                for (int i = 0; i <parameters.length; i++) {
-                    command[i+1] = parameters[i];
+                for (int i = 0; i < parameters.length; i++) {
+                    command[i + 1] = parameters[i];
                 }
                 ProcessBuilder pb = new ProcessBuilder();
                 pb.directory(new File(leroyHomeDir.toString()));
@@ -228,8 +231,8 @@ public class LeroyUtils {
 
                 BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
                 StringBuilder builder = new StringBuilder();
-                String line ;
-                while ( (line = br.readLine()) != null) {
+                String line;
+                while ((line = br.readLine()) != null) {
                     builder.append(line);
                     builder.append(System.getProperty("line.separator"));
                 }
@@ -258,6 +261,7 @@ public class LeroyUtils {
 
     /**
      * Downloads a file from specific url to temp folder on specific node
+     *
      * @param url
      * @param node
      * @return FilePath object pointing to downloaded file
@@ -288,11 +292,11 @@ public class LeroyUtils {
 
     public static void unpack(FilePath source, FilePath target) throws LeroyException {
         try {
-           if (source.getName().toLowerCase().endsWith(".zip")) {
-               source.unzip(target);
-           } else {
-               source.untar(target, FilePath.TarCompression.GZIP);
-           }
+            if (source.getName().toLowerCase().endsWith(".zip")) {
+                source.unzip(target);
+            } else {
+                source.untar(target, FilePath.TarCompression.GZIP);
+            }
         } catch (Exception e) {
             throw new LeroyException("Cannot extract from '" + source.getName() + "' to '" + target.getName() + "'", e);
         }
@@ -326,7 +330,7 @@ public class LeroyUtils {
             });
             return result;
         } catch (Exception e) {
-            throw new LeroyException("Cannot get ip address of the node." , e);
+            throw new LeroyException("Cannot get ip address of the node.", e);
         }
     }
 
@@ -342,6 +346,7 @@ public class LeroyUtils {
     public static boolean canWrite(FilePath path) throws IOException, InterruptedException {
         Boolean result = path.act(new FilePath.FileCallable<Boolean>() {
             private static final long serialVersionUID = 1L;
+
             public Boolean invoke(File f, VirtualChannel channel) throws IOException, InterruptedException {
                 return f.canWrite();
             }
@@ -349,19 +354,22 @@ public class LeroyUtils {
         return result;
     }
 
-    public static Map<String,String> listFiles(FilePath dir, String include, String exclude) throws IOException, InterruptedException {
+    public static Map<String, String> listFiles(FilePath dir, String include, String exclude) throws IOException, InterruptedException {
         return dir.act(new ListFiles(include, exclude));
     }
 
-    private static final class ListFiles implements FilePath.FileCallable<Map<String,String>> {
+    private static final class ListFiles implements FilePath.FileCallable<Map<String, String>> {
         private static final long serialVersionUID = 1;
         private final String includes, excludes;
+
         ListFiles(String includes, String excludes) {
             this.includes = includes;
             this.excludes = excludes;
         }
-        @Override public Map<String,String> invoke(File basedir, VirtualChannel channel) throws IOException, InterruptedException {
-            Map<String,String> r = new HashMap<String,String>();
+
+        @Override
+        public Map<String, String> invoke(File basedir, VirtualChannel channel) throws IOException, InterruptedException {
+            Map<String, String> r = new HashMap<String, String>();
             for (String f : Util.createFileSet(basedir, includes, excludes).getDirectoryScanner().getIncludedFiles()) {
                 f = f.replace(File.separatorChar, '/');
                 r.put(f, f);
