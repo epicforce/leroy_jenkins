@@ -55,6 +55,19 @@ public class LeroyConfigurationBuilder extends AbstractLeroyBuilder {
         FilePath ws = build.getWorkspace();
         log.println("Files are copied from " + ws + " to " + leroyHome);
 
+        // if <LEROY_HOME>/configurations.xml doesn't exists - attempt to copy it from LEROY_HOME/samples/
+        FilePath configXml = new FilePath(leroyHome, "configurations.xml");
+        if (!configXml.exists()) {
+            log.println("'configurations.xml' doesn't exist in Leroy home directory. Try to copy it from samples.");
+            FilePath configFromSamples = new FilePath(leroyHome, "samples/configurations.xml");
+            if (!configFromSamples.exists()) {
+                log.println("Can find 'configurations.xml' neither in <LEROY_HOME> nor in <LEROY_HOME>/samples/.");
+            } else {
+                configFromSamples.copyTo(configXml);
+                log.println("'" + configFromSamples.getRemote() + "' has been copied to " + leroyHome.getRemote());
+            }
+        }
+
         // if LEROY_HOME/temp-generated_configs folder exists - delete it
         FilePath generatedConfigs = new FilePath(leroyHome, "temp-generated_configs");
         generatedConfigs.deleteRecursive();
