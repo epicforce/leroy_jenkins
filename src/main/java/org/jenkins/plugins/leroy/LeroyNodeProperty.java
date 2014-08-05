@@ -304,7 +304,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
 
 
     @Override
-    public NodeProperty<?> reconfigure(org.kohsuke.stapler.StaplerRequest req, net.sf.json.JSONObject form) throws Descriptor.FormException {
+    public NodeProperty<?> reconfigure(StaplerRequest req, JSONObject form) throws Descriptor.FormException {
         if (form == null) {
             return null;
         }
