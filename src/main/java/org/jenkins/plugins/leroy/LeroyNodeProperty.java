@@ -429,7 +429,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 // if we need to install it via ssh
                 if (!"true".equalsIgnoreCase(sshInstall)) {
                     if (returnCode == 0) {
-                        String result = "Generated: " + new File(leroyHome, bundleName).getAbsoluteFile() + "\n" +
+                        String result = "Generated: " + LeroyUtils.toPath(leroyHome, bundleName) + "\n" +
                                 "To manually install agent, copy and extract this zip file " +
                                 "to your host and run the agent binary."; //TODO externalize
                         return FormValidation.ok(result);
@@ -459,8 +459,7 @@ public class LeroyNodeProperty extends NodeProperty<Node> {
                 }
 
                 if (returnCode == 0) {
-                    String result = "Generated: " + new File(leroyHome, bundleName).getAbsoluteFile() + "\n" +
-                            "Installed via SSH"; //TODO externalize
+                    String result = "Agent successfully installed via SSH"; //TODO externalize
                     return FormValidation.ok(result);
                 }
                 return FormValidation.error("Failed to install agent via SSH" + output);

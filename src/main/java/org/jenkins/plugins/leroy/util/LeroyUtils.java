@@ -302,6 +302,23 @@ public class LeroyUtils {
         }
     }
 
+    /**
+     * Primitively join 2 parts of file path.
+     * Do not use FileSystem to resolve filename as it will be called on remote machine
+     * @param base
+     * @param relativeName
+     */
+    public static String toPath(String base, String relativeName) {
+        if (base.endsWith("/") || base.endsWith("\\")) {
+            return base + relativeName;
+        }
+        String separator = "/";
+        if (base.contains("\\") && !base.contains("/")) {
+            separator = "\\";
+        }
+        return base + separator + relativeName;
+    }
+
     public static String getControllerVersion(Node node, FilePath leroyHome) {
         String res = "N/A";
         try {
@@ -331,15 +348,6 @@ public class LeroyUtils {
             return result;
         } catch (Exception e) {
             throw new LeroyException("Cannot get ip address of the node.", e);
-        }
-    }
-
-    public static void main(String[] args) {
-        try {
-            String res = runController("C:/leroy", null, new String[]{"--version"});
-            System.out.println(res);
-        } catch (LeroyException e) {
-            e.printStackTrace();
         }
     }
 
