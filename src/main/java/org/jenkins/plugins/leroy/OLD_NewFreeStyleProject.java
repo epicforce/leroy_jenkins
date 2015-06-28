@@ -33,36 +33,12 @@ import java.util.logging.Logger;
 /**
  * @author Yunus
  */
-public class NewFreeStyleProject extends NewProject<NewFreeStyleProject, NewFreeStyleBuild> implements TopLevelItem {
 
-    private static Logger LOGGER = Logger.getLogger(NewFreeStyleProject.class.getName());
+// Leroy deployment job
+public class OLD_NewFreeStyleProject {
 
-    /**
-     * @deprecated as of 1.390
-     */
-    public NewFreeStyleProject(Jenkins parent, String name) throws IOException {
-        super(parent, name);
-    }
+    private static Logger LOGGER = Logger.getLogger(OLD_NewFreeStyleProject.class.getName());
 
-
-    public NewFreeStyleProject(ItemGroup parent, String name) throws IOException {
-        super(parent, name);
-    }
-
-    @Override
-    protected Class<NewFreeStyleBuild> getBuildClass() {
-        return NewFreeStyleBuild.class;
-    }
-
-    @Override
-    public NewFreeStyleProject.DescriptorImpl getDescriptor() {
-        return (NewFreeStyleProject.DescriptorImpl) Jenkins.getInstance().getDescriptorOrDie(getClass());
-    }
-
-    @Override
-    public String getBuildNowText() {
-        return "Deploy";
-    }
 
     /**
      * update build with leroy parameters
@@ -178,33 +154,6 @@ public class NewFreeStyleProject extends NewProject<NewFreeStyleProject, NewFree
             LOGGER.fine("Assigned node :" + assignedNodeName);
         }
         save();
-    }
-
-    /**
-     * Descriptor is instantiated as a field purely for backward compatibility.
-     * Do not do this in your code. Put @Extension on your DescriptorImpl class instead.
-     */
-    @Restricted(NoExternalUse.class)
-    @Extension(ordinal = 1000)
-    public final static NewFreeStyleProject.DescriptorImpl DESCRIPTOR = new NewFreeStyleProject.DescriptorImpl();
-
-    public static class DescriptorImpl extends AbstractProjectDescriptor {
-
-        @Override
-        public String getDisplayName() {
-            return "Leroy Deployment Job";
-        }
-
-        @Override
-        public NewFreeStyleProject newInstance(ItemGroup parent, String name) {
-            try {
-                return new NewFreeStyleProject(parent, name);
-            } catch (IOException ex) {
-                LOGGER.log(Level.SEVERE, null, ex);
-                return null;
-            }
-        }
-
     }
 
 }

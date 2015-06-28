@@ -26,16 +26,11 @@ package org.jenkins.plugins.leroy;
 
 import hudson.FilePath;
 import hudson.Launcher;
-import hudson.Util;
 import hudson.model.*;
 import hudson.model.Descriptor.FormException;
-import hudson.plugins.copyartifact.CopyArtifact;
-import hudson.plugins.copyartifact.StatusBuildSelector;
 import hudson.scm.NullSCM;
 import hudson.scm.SCM;
 import hudson.tasks.*;
-import hudson.tasks.Maven.MavenInstallation;
-import hudson.tasks.Maven.ProjectWithMaven;
 import hudson.triggers.Trigger;
 import hudson.util.DescribableList;
 import hudson.util.RunList;
@@ -68,54 +63,35 @@ import java.util.logging.Logger;
  * @param <P>
  * @param <B>
  */
-public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<P, B>>
-        extends AbstractProject<P, B> implements SCMedItem, Saveable, ProjectWithMaven, BuildableItemWithBuildWrappers {
+public abstract class OLD_NewProject {
 
     /**
      * List of active {@link Builder}s configured for this project.
      */
     private volatile DescribableList<Builder, Descriptor<Builder>> builders;
-    private static final AtomicReferenceFieldUpdater<NewProject, DescribableList> buildersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(NewProject.class, DescribableList.class, "builders");
+    private static final AtomicReferenceFieldUpdater<OLD_NewProject, DescribableList> buildersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(OLD_NewProject.class, DescribableList.class, "builders");
 
     /**
      * List of active {@link Publisher}s configured for this project.
      */
     private volatile DescribableList<Publisher, Descriptor<Publisher>> publishers;
-    private static final AtomicReferenceFieldUpdater<NewProject, DescribableList> publishersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(NewProject.class, DescribableList.class, "publishers");
+    private static final AtomicReferenceFieldUpdater<OLD_NewProject, DescribableList> publishersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(OLD_NewProject.class, DescribableList.class, "publishers");
 
     /**
      * List of active {@link BuildWrapper}s configured for this project.
      */
     private volatile DescribableList<BuildWrapper, Descriptor<BuildWrapper>> buildWrappers;
-    private static final AtomicReferenceFieldUpdater<NewProject, DescribableList> buildWrappersSetter
-            = AtomicReferenceFieldUpdater.newUpdater(NewProject.class, DescribableList.class, "buildWrappers");
+    private static final AtomicReferenceFieldUpdater<OLD_NewProject, DescribableList> buildWrappersSetter
+            = AtomicReferenceFieldUpdater.newUpdater(OLD_NewProject.class, DescribableList.class, "buildWrappers");
 
-    private static Logger LOGGER = Logger.getLogger(NewProject.class.getName());
+    private static Logger LOGGER = Logger.getLogger(OLD_NewProject.class.getName());
 
     private List<String> workflow;
 
     private List<String> environment;
 
-    /**
-     * Creates a new deployment project. Has such no descriptive name because of historical reasons
-     */
-    public NewProject(ItemGroup parent, String name) throws IOException {
-        super(parent, name);
-    }
-
-    @Override
-    public void onLoad(ItemGroup<? extends Item> parent, String name) throws IOException {
-        super.onLoad((ItemGroup) parent, name);
-        getBuildersList().setOwner(this);
-        getPublishersList().setOwner(this);
-        getBuildWrappersList().setOwner(this);
-    }
-
-    public AbstractProject<?, ?> asProject() {
-        return this;
-    }
 
     private void readWorkflowsFromDisk(String workflowsDir) {
         File wfDir = new File(workflowsDir);
@@ -159,7 +135,7 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
                 return;
             }
             FilePath checkoutDir = new FilePath(Files.createTempDirectory("leroyTempDir").toFile());
-            AbstractBuild dumbBuild = new NewBuild(this);
+            AbstractBuild dumbBuild = new OLD_NewBuild(this);
             Launcher dumbLauncher = Hudson.getInstance().createLauncher(TaskListener.NULL);
             BuildListener dumbListener = new StreamBuildListener(new FileOutputStream(File.createTempFile("dumbListener", "tmp")));
             boolean check = scm.checkout(dumbBuild, dumbLauncher, checkoutDir, dumbListener, File.createTempFile("changelog", "tmp"));
@@ -176,125 +152,35 @@ public abstract class NewProject<P extends NewProject<P, B>, B extends NewBuild<
         }
     }
 
-    public List<Builder> getBuilders() {
-        // first load config from SCM
-        loadConfigFromSCM();
-        // if Leroy Builder and Copy Artifact already present return builders
-        boolean containsLeroy = false;
-        boolean containsCopyartifact = false;
-        List<Builder> builders = getBuildersList().toList();
-        for (Builder builder : builders) {
-            if (builder instanceof LeroyBuilder) {
-                containsLeroy = true;
-                // pass workflows to builder
-                ((LeroyBuilder) builder).setWorkflows(workflow);
-            } else if (builder instanceof CopyArtifact) {
-                containsCopyartifact = true;
-            }
-        }
+//    public List<Builder> getBuilders() {
+//        // first load config from SCM
+//        loadConfigFromSCM();
+//        // if Leroy Builder and Copy Artifact already present return builders
+//        boolean containsLeroy = false;
+//        boolean containsCopyartifact = false;
+//        List<Builder> builders = getBuildersList().toList();
+//        for (Builder builder : builders) {
+//            if (builder instanceof LeroyBuilder) {
+//                containsLeroy = true;
+//                // pass workflows to builder
+//                ((LeroyBuilder) builder).setWorkflows(workflow);
+//            } else if (builder instanceof CopyArtifact) {
+//                containsCopyartifact = true;
+//            }
+//        }
+//
+//        builders = new ArrayList<Builder>(builders);
+//        if (!containsCopyartifact) {
+//            builders.add(new CopyArtifact("", "", new StatusBuildSelector(true), "", "${LEROY_HOME}/artifacts/", false, false, true));
+//        }
+//        if (!containsLeroy) {
+//            LeroyBuilder builder = new LeroyBuilder(this.getName(), new ArrayList<LeroyBuilder.Target>(), "", false);
+//            builder.setWorkflows(workflow);
+//            builders.add(builder);
+//        }
+//        return builders;
+//    }
 
-        builders = new ArrayList<Builder>(builders);
-        if (!containsCopyartifact) {
-            builders.add(new CopyArtifact("", "", new StatusBuildSelector(true), "", "${LEROY_HOME}/artifacts/", false, false, true));
-        }
-        if (!containsLeroy) {
-            LeroyBuilder builder = new LeroyBuilder(this.getName(), new ArrayList<LeroyBuilder.Target>(), "", false);
-            builder.setWorkflows(workflow);
-            builders.add(builder);
-        }
-        return builders;
-    }
-
-    /**
-     * @deprecated as of 1.463
-     * We will be soon removing the restriction that only one instance of publisher is allowed per type.
-     * Use {@link #getPublishersList()} instead.
-     */
-    public Map<Descriptor<Publisher>, Publisher> getPublishers() {
-        return getPublishersList().toMap();
-    }
-
-    public DescribableList<Builder, Descriptor<Builder>> getBuildersList() {
-        if (builders == null) {
-            buildersSetter.compareAndSet(this, null, new DescribableList<Builder, Descriptor<Builder>>(this));
-        }
-        return builders;
-    }
-
-    public DescribableList<Publisher, Descriptor<Publisher>> getPublishersList() {
-        if (publishers == null) {
-            publishersSetter.compareAndSet(this, null, new DescribableList<Publisher, Descriptor<Publisher>>(this));
-        }
-        return publishers;
-    }
-
-    public Map<Descriptor<BuildWrapper>, BuildWrapper> getBuildWrappers() {
-        return getBuildWrappersList().toMap();
-    }
-
-    public DescribableList<BuildWrapper, Descriptor<BuildWrapper>> getBuildWrappersList() {
-        if (buildWrappers == null) {
-            buildWrappersSetter.compareAndSet(this, null, new DescribableList<BuildWrapper, Descriptor<BuildWrapper>>(this));
-        }
-        return buildWrappers;
-    }
-
-    @Override
-    protected Set<ResourceActivity> getResourceActivities() {
-        final Set<ResourceActivity> activities = new HashSet<ResourceActivity>();
-
-        activities.addAll(super.getResourceActivities());
-        activities.addAll(Util.filter(getBuildersList(), ResourceActivity.class));
-        activities.addAll(Util.filter(getPublishersList(), ResourceActivity.class));
-        activities.addAll(Util.filter(getBuildWrappersList(), ResourceActivity.class));
-
-        return activities;
-    }
-
-    /**
-     * Adds a new {@link BuildStep} to this {@link Project} and saves the configuration.
-     *
-     * @deprecated as of 1.290
-     * Use {@code getPublishersList().add(x)}
-     */
-    public void addPublisher(Publisher buildStep) throws IOException {
-        getPublishersList().add(buildStep);
-    }
-
-    /**
-     * Removes a publisher from this project, if it's active.
-     *
-     * @deprecated as of 1.290
-     * Use {@code getPublishersList().remove(x)}
-     */
-    public void removePublisher(Descriptor<Publisher> descriptor) throws IOException {
-        getPublishersList().remove(descriptor);
-    }
-
-    public Publisher getPublisher(Descriptor<Publisher> descriptor) {
-        for (Publisher p : getPublishersList()) {
-            if (p.getDescriptor() == descriptor)
-                return p;
-        }
-        return null;
-    }
-
-    protected void buildDependencyGraph(DependencyGraph graph) {
-        getPublishersList().buildDependencyGraph(this, graph);
-        getBuildersList().buildDependencyGraph(this, graph);
-        getBuildWrappersList().buildDependencyGraph(this, graph);
-    }
-
-    @Override
-    public boolean isFingerprintConfigured() {
-        return getPublishersList().get(Fingerprinter.class) != null;
-    }
-
-    public MavenInstallation inferMavenInstallation() {
-        Maven m = getBuildersList().get(Maven.class);
-        if (m != null) return m.getMaven();
-        return null;
-    }
 
     @Override
     protected void submit(StaplerRequest req, StaplerResponse rsp) throws IOException, ServletException, FormException {

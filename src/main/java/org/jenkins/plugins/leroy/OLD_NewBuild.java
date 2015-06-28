@@ -23,9 +23,14 @@
  */
 package org.jenkins.plugins.leroy;
 
+import hudson.FilePath;
 import hudson.Launcher;
 import hudson.model.*;
 import hudson.tasks.*;
+import org.apache.commons.lang.StringUtils;
+import org.jenkins.plugins.leroy.util.Constants;
+import org.jenkins.plugins.leroy.util.JsonUtils;
+import org.jenkins.plugins.leroy.util.LeroyUtils;
 import org.kohsuke.accmod.Restricted;
 import org.kohsuke.accmod.restrictions.NoExternalUse;
 
@@ -45,7 +50,7 @@ import static hudson.model.Result.FAILURE;
  * <p/>
  * <h2>Steps of a build</h2>
  * <p/>
- * Roughly speaking, a {@link NewBuild} goes through the following stages:
+ * Roughly speaking, a {@link OLD_NewBuild} goes through the following stages:
  * <p/>
  * <dl>
  * <dt>SCM checkout
@@ -73,81 +78,80 @@ import static hudson.model.Result.FAILURE;
  * </dl>
  * <p/>
  * <p/>
- * And beyond that, the build is considered complete, and from then on {@link NewBuild} object is there to
+ * And beyond that, the build is considered complete, and from then on {@link OLD_NewBuild} object is there to
  * keep the record of what happened in this build.
  *
  * @author Kohsuke Kawaguchi
  */
-public abstract class ConfigurationBuild<P extends ConfigurationProject<P, B>, B extends ConfigurationBuild<P, B>>
-        extends AbstractBuild<P, B> {
+public class OLD_NewBuild {
 
-    /**
-     * Creates a new build.
-     */
-    protected ConfigurationBuild(P project) throws IOException {
-        super(project);
-    }
-
-    protected ConfigurationBuild(P job, Calendar timestamp) {
-        super(job, timestamp);
-    }
-
-    /**
-     * Loads a build from a log file.
-     */
-    protected ConfigurationBuild(P project, File buildDir) throws IOException {
-        super(project, buildDir);
-    }
-
-    //
-//
-// actions
-//
-//
-    @Override
-    public void run() {
-        execute(createRunner());
-    }
-
-    /**
-     * @deprecated as of 1.467
-     * Override the {@link #run()} method by calling {@link #execute(RunExecution)} with
-     * proper execution object.
-     */
-    @Restricted(NoExternalUse.class)
-    protected Runner createRunner() {
-        return new BuildExecution();
-    }
-
-    /**
-     * @deprecated as of 1.467
-     * Please use {@link BuildExecution}
-     */
-    protected class RunnerImpl extends BuildExecution {
-    }
 
     protected class BuildExecution extends AbstractRunner {
-        /*
-            Some plugins might depend on this instance castable to Runner, so we need to use
-            deprecated class here.
-         */
+
+        private String user;
+        private LeroyBuilder.Target target;
+
+
+        public BuildExecution() {
+            super();
+            try {
+                init();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        private void init() throws IOException, InterruptedException {
+            String targetConfig = getBuild().getEnvironment(listener).get(Constants.TARGET_CONFIGURATION);
+            if (!StringUtils.isEmpty(targetConfig)) {
+                target = JsonUtils.getTargetFromBuildParameter(targetConfig);
+            }
+            user = LeroyUtils.getUserRunTheBuild(getBuild());
+        }
+
+        private void setNameDescription() throws IOException, InterruptedException {
+            String env = "null";
+            String wf = "null";
+            if (target != null) {
+                env = target.environment;
+                wf = target.workflow;
+            }
+            getBuild().setDisplayName(env + "_" + wf);
+            getBuild().setDescription("By: " + user); //TODO externalize
+        }
+
+        private Result checkLeroyHomeWritable(BuildListener listener) throws IOException, InterruptedException {
+            String leroyHome = LeroyUtils.getLeroyHome(Executor.currentExecutor());
+            Node node = Executor.currentExecutor().getOwner().getNode();
+            Result r = null;
+            if (!LeroyUtils.canWrite(new FilePath(node.getChannel(), leroyHome))) {
+                r = Executor.currentExecutor().abortResult();
+                listener.error("LEROY_HOME is not writeable to {0} please grant this user write permissions to this folder in order for Leroy to function properly.", user);
+            }
+            return r;
+        }
 
         protected Result doRun(BuildListener listener) throws Exception {
+            Result r = null;
+
+            setNameDescription();
+
             if (!preBuild(listener, project.getBuilders()))
                 return FAILURE;
             if (!preBuild(listener, project.getPublishersList()))
                 return FAILURE;
 
-            Result r = null;
             try {
-                List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
+                r = checkLeroyHomeWritable(listener);
 
+                List<BuildWrapper> wrappers = new ArrayList<BuildWrapper>(project.getBuildWrappers().values());
                 ParametersAction parameters = getAction(ParametersAction.class);
+
                 if (parameters != null)
-                    parameters.createBuildWrappers(ConfigurationBuild.this, wrappers);
+                    parameters.createBuildWrappers(OLD_NewBuild.this, wrappers);
 
                 for (BuildWrapper w : wrappers) {
-                    Environment e = w.setUp((AbstractBuild<?, ?>) ConfigurationBuild.this, launcher, listener);
+                    Environment e = w.setUp((AbstractBuild<?, ?>) OLD_NewBuild.this, launcher, listener);
                     if (e == null)
                         return (r = FAILURE);
                     buildEnvironments.add(e);
@@ -164,48 +168,21 @@ public abstract class ConfigurationBuild<P extends ConfigurationProject<P, B>, B
                 // tear down in reverse order
                 boolean failed = false;
                 for (int i = buildEnvironments.size() - 1; i >= 0; i--) {
-                    if (!buildEnvironments.get(i).tearDown(ConfigurationBuild.this, listener)) {
+                    if (!buildEnvironments.get(i).tearDown(OLD_NewBuild.this, listener)) {
                         failed = true;
                     }
                 }
                 // WARNING The return in the finally clause will trump any return before
                 if (failed) return FAILURE;
             }
-
             return r;
         }
 
-        public void post2(BuildListener listener) throws IOException, InterruptedException {
-            if (!performAllBuildSteps(listener, project.getPublishersList(), true))
-                setResult(FAILURE);
-            if (!performAllBuildSteps(listener, project.getProperties(), true))
-                setResult(FAILURE);
-        }
-
-        @Override
-        public void cleanUp(BuildListener listener) throws Exception {
-            // at this point it's too late to mark the build as a failure, so ignore return value.
-            performAllBuildSteps(listener, project.getPublishersList(), false);
-            performAllBuildSteps(listener, project.getProperties(), false);
-            super.cleanUp(listener);
-        }
-
-        private boolean build(BuildListener listener, Collection<Builder> steps) throws IOException, InterruptedException {
-            for (BuildStep bs : steps) {
-                if (!perform(bs, listener)) {
-                    LOGGER.fine(MessageFormat.format("{0} : {1} failed", ConfigurationBuild.this.toString(), bs));
-                    return false;
-                }
-
-                Executor executor = getExecutor();
-                if (executor != null && executor.isInterrupted()) {
-                    // someone asked build interruption, let stop the build before trying to run another build step
-                    throw new InterruptedException();
-                }
-            }
-            return true;
-        }
     }
 
-    private static final Logger LOGGER = Logger.getLogger(ConfigurationBuild.class.getName());
+    public boolean doWo() {
+        return true;
+    }
+
+    private static final Logger LOGGER = Logger.getLogger(OLD_NewBuild.class.getName());
 }

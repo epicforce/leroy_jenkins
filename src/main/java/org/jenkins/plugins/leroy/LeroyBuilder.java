@@ -98,6 +98,136 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
         return values;
     }
 
+    /**
+     * This will create $WORKSPACE/leroy/artifacts/configurations.zip
+     * and requires the existence of at least 1 file in $WORKSPACE/leroy/resources/
+     *
+     * $LEROY_HOME/controller --leroy-configuration-root=$WORKSPACE/leroy --generate-configurations --workflow=configurations.xml
+     */
+    private boolean configure(AbstractBuild build, Launcher launcher, BuildListener listener) throws IOException, InterruptedException {
+        PrintStream log = listener.getLogger();
+
+        EnvVars envs = build.getEnvironment(listener);
+        FilePath leroyHome = new FilePath(launcher.getChannel(), envs.get(Constants.LEROY_HOME));
+        log.println(Constants.LEROY_HOME + ": " + leroyHome.getName());
+
+        int returnCode = 0;
+
+        // $WORKSPACE/leroy/resources/ should contain at least 1 file
+        FilePath resFolder = build.getWorkspace().child("leroy/resources/");
+        if (resFolder.exists() && resFolder.isDirectory()) {
+            List<FilePath> children = resFolder.list();
+            if (children == null || children.size() == 0 ) {
+                listener.error("Folder '{0}' is empty", resFolder);
+                return false;
+            }
+        }
+
+        // run "controller --generate-configs configurations.xml"
+        returnCode = launcher.launch().envs(envs).pwd(leroyHome)
+                .cmds(leroyHome + "/controller",
+                        "--leroy-configuration-root",
+                        "$WORKSPACE/leroy",
+                        "--generate-configurations",
+                        "--workflow=configurations.xml"
+                        ).stdout(listener).join();
+        if (returnCode != 0) {
+            listener.error("Cannot create configurations; error code = {0}", returnCode);
+            return false;
+        }
+
+        log.println("Configurations are created successfully");
+        return true;
+    }
+
+    private boolean deploy(AbstractBuild build, Launcher launcher, BuildListener listener)
+            throws IOException, InterruptedException {
+        EnvVars envs = build.getEnvironment(listener);
+        PrintStream log = listener.getLogger();
+
+        // get build target
+        String targetParam = envs.get(Constants.TARGET_CONFIGURATION);
+        final Target target = JsonUtils.getTargetFromBuildParameter(targetParam);
+        Constants.ConfigSource configSource = Constants.ConfigSource.valueOf(target.configSource);
+
+        FilePath ws = build.getWorkspace();
+        FilePath leroyHome = new FilePath(launcher.getChannel(), envs.get(Constants.LEROY_HOME));
+        log.println("LEROY_HOME: " + leroyHome);
+
+        int returnCode = 0;
+
+        // clear up configs from LEROY HOME
+        new FilePath(leroyHome, "commands").deleteRecursive();
+        new FilePath(leroyHome, "workflows").deleteRecursive();
+        new FilePath(leroyHome, "properties").deleteRecursive();
+        new FilePath(leroyHome, "resources").deleteRecursive();
+
+        // if we take configurations from the last build then we need to "prepare" LEROY_HOME
+        if (configSource == Constants.ConfigSource.LAST_SUCCESS) {
+            // first remove "control files" from workspace
+            new FilePath(ws, "commands").deleteRecursive();
+            new FilePath(ws, "workflows").deleteRecursive();
+            new FilePath(ws, "properties").deleteRecursive();
+            new FilePath(ws, "resources").deleteRecursive();
+            new FilePath(ws, "environments.xml").delete();
+            log.println("Remove old config files from workspace - success!");
+
+            // now copy artifact from LAST BUILD to workspace
+            // we have 2 possible source builds here: last stable and last stable with the same "target" (workflow/environment combination)
+            CopyArtifact copyFromBuildToWks = null;
+            if (useLastBuildWithSameTarget) {
+                copyFromBuildToWks = new CopyArtifact(build.getProject().getName(), "", new BuildSelector() {
+                    @Override
+                    protected boolean isSelectable(Run<?, ?> run, EnvVars env) {
+                        String buildname = target.environment + "_" + target.workflow;
+                        if (run.getResult().isBetterOrEqualTo(Result.UNSTABLE) && buildname.equals(run.getDisplayName())) {
+                            return true;
+                        }
+                        return false;
+                    }
+                }, "", ws.getRemote(), false, false, true);
+            } else {
+                // or copy artifacts from the latest stable build
+                copyFromBuildToWks = new CopyArtifact(build.getProject().getName(), "", new StatusBuildSelector(true), "", ws.getRemote(), false, false, true);
+            }
+            boolean success = copyFromBuildToWks.perform(build, launcher, listener);
+            if (!success) {
+                return false;
+            }
+            log.println("Copy configs from last build to workspace - success!");
+        }
+
+        // copy artifacts from workspace to LEROY HOME
+        ws.copyRecursiveTo(leroyHome);
+        log.println("Copy files from " + ws + " to " + leroyHome + " - success!");
+
+        // deploy
+        List<String> cmds = new ArrayList<String>();
+        cmds.add(leroyHome + "/controller");
+        cmds.add("--workflow");
+        cmds.add(target.workflow);
+        cmds.add("--environment");
+        cmds.add(target.environment);
+        List<ParameterValue> leroyParameValues = findLeroyParameterValues(build);
+        for (ParameterValue leroyParamValue : leroyParameValues) {
+            cmds.add("--add-global-property");
+            String key = leroyParamValue.getName();
+            String value = (String) build.getBuildVariables().get(key);
+            cmds.add(key + "=" + value);
+        }
+
+        returnCode = launcher.launch().pwd(leroyHome).envs(envs).cmds(cmds).stdout(listener).join();
+        if (returnCode != 0) {
+            return false;
+        }
+        log.println("Deploy - success!");
+
+        // archive configurations
+        Map<String, String> files = LeroyUtils.listFiles(leroyHome, "commands/**,workflows/**,properties/**,environments/**,*.xml,*.key,*.pem,*.crt", "");
+        build.getArtifactManager().archive(leroyHome, launcher, listener, files);
+        log.println("Archive artifacts - success!");
+        return returnCode == 0;
+    }
 
     /**
      * This method performs the deployment via leroy.
@@ -292,10 +422,7 @@ public class LeroyBuilder extends AbstractLeroyBuilder {
 
         @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            if (NewFreeStyleProject.class.isAssignableFrom(aClass)) {
-                return true;
-            }
-            return false;
+            return true;
         }
 
         /**

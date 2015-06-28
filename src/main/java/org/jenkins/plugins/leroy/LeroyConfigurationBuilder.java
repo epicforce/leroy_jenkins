@@ -114,12 +114,8 @@ public class LeroyConfigurationBuilder extends AbstractLeroyBuilder {
             return items;
         }
 
-
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
-            if (LeroyConfigurationProject.class.isAssignableFrom(aClass)) {
-                return true;
-            }
-            return false;
+            return true;
         }
 
         /**
